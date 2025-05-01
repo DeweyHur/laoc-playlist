@@ -1,26 +1,60 @@
 import { createClient } from '@supabase/supabase-js'
 import { useState, useEffect } from 'react'
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
+)
 
 function App() {
   const [links, setLinks] = useState([])
   const [newLink, setNewLink] = useState("")
 
   useEffect(() => {
+    console.log('App mounted, fetching links...')
     fetchLinks()
   }, [])
 
   const fetchLinks = async () => {
-    const { data } = await supabase.from('playlists').select('*').order('created_at', { ascending: false })
-    setLinks(data)
+    console.log('Fetching links from Supabase...')
+    try {
+      const { data, error } = await supabase.from('playlists').select('*').order('created_at', { ascending: false })
+      if (error) {
+        console.error('Error fetching links:', error)
+        return
+      }
+      console.log('Links fetched successfully:', data)
+      setLinks(data)
+    } catch (err) {
+      console.error('Unexpected error fetching links:', err)
+    }
   }
 
   const addLink = async () => {
-    if (!newLink) return
-    await supabase.from('playlists').insert({ youtube_url: newLink, title: '곡 제목 (옵션)' })
-    setNewLink("")
-    fetchLinks()
+    if (!newLink) {
+      console.log('No link provided, skipping add')
+      return
+    }
+    console.log('Adding new link:', newLink)
+    try {
+      const { error } = await supabase.from('playlists').insert({ youtube_url: newLink, title: '곡 제목 (옵션)' })
+      if (error) {
+        console.error('Error adding link:', error)
+        return
+      }
+      console.log('Link added successfully')
+      setNewLink("")
+      fetchLinks()
+    } catch (err) {
+      console.error('Unexpected error adding link:', err)
+    }
   }
 
   return (
