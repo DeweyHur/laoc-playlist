@@ -1,0 +1,47 @@
+import { createClient } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react'
+
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+
+function App() {
+  const [links, setLinks] = useState([])
+  const [newLink, setNewLink] = useState("")
+
+  useEffect(() => {
+    fetchLinks()
+  }, [])
+
+  const fetchLinks = async () => {
+    const { data } = await supabase.from('playlists').select('*').order('created_at', { ascending: false })
+    setLinks(data)
+  }
+
+  const addLink = async () => {
+    if (!newLink) return
+    await supabase.from('playlists').insert({ youtube_url: newLink, title: '곡 제목 (옵션)' })
+    setNewLink("")
+    fetchLinks()
+  }
+
+  return (
+    <div className="p-4 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">🎵 밴드방 유튜브 플레이리스트</h1>
+      <div className="flex mb-4">
+        <input value={newLink} onChange={e => setNewLink(e.target.value)} className="flex-1 border p-2 rounded" placeholder="유튜브 링크 붙여넣기" />
+        <button onClick={addLink} className="ml-2 bg-blue-500 text-white px-4 py-2 rounded">추가</button>
+      </div>
+      {links.map(link => (
+        <div key={link.id} className="mb-4">
+          <iframe width="100%" height="200" src={`https://www.youtube.com/embed/${extractId(link.youtube_url)}`} frameBorder="0" allowFullScreen></iframe>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const extractId = (url) => {
+  const match = url.match(/v=([^&]+)/)
+  return match ? match[1] : ""
+}
+
+export default App
