@@ -72,7 +72,7 @@ function App() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: 'http://localhost:5173/auth/callback',
+          redirectTo: import.meta.env.VITE_KAKAO_AUTH_REDIRECT_URL,
           queryParams: {
             client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
             client_secret: import.meta.env.VITE_KAKAO_CLIENT_SECRET,
