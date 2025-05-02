@@ -1,5 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
 import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { createClient } from '@supabase/supabase-js'
+import {
+  Button,
+  Title3,
+  Text,
+  makeStyles,
+  tokens,
+  Spinner,
+} from '@fluentui/react-components'
+import Layout from './components/Layout'
+import HomePage from './pages/HomePage'
+import ProfilePage from './pages/ProfilePage'
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -13,9 +25,30 @@ const supabase = createClient(
   }
 )
 
+const useStyles = makeStyles({
+  loginContainer: {
+    textAlign: 'center',
+    padding: tokens.spacingHorizontalL,
+    maxWidth: '400px',
+    margin: '0 auto',
+  },
+  kakaoButton: {
+    backgroundColor: '#FEE500',
+    color: '#000000',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto',
+  },
+  kakaoIcon: {
+    width: '24px',
+    height: '24px',
+    marginRight: tokens.spacingHorizontalS,
+  },
+})
+
 function App() {
-  const [links, setLinks] = useState([])
-  const [newLink, setNewLink] = useState("")
+  const styles = useStyles()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -33,13 +66,6 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  useEffect(() => {
-    if (user) {
-      console.log('App mounted, fetching links...')
-      fetchLinks()
-    }
-  }, [user])
 
   const handleKakaoLogin = async () => {
     try {
@@ -69,92 +95,45 @@ function App() {
     }
   }
 
-  const fetchLinks = async () => {
-    console.log('Fetching links from Supabase...')
-    try {
-      const { data, error } = await supabase.from('playlists').select('*').order('created_at', { ascending: false })
-      if (error) {
-        console.error('Error fetching links:', error)
-        return
-      }
-      console.log('Links fetched successfully:', data)
-      setLinks(data)
-    } catch (err) {
-      console.error('Unexpected error fetching links:', err)
-    }
-  }
-
-  const addLink = async () => {
-    if (!newLink) {
-      console.log('No link provided, skipping add')
-      return
-    }
-    console.log('Adding new link:', newLink)
-    try {
-      const { error } = await supabase.from('playlists').insert({ youtube_url: newLink, title: '곡 제목 (옵션)' })
-      if (error) {
-        console.error('Error adding link:', error)
-        return
-      }
-      console.log('Link added successfully')
-      setNewLink("")
-      fetchLinks()
-    } catch (err) {
-      console.error('Unexpected error adding link:', err)
-    }
-  }
-
   if (loading) {
-    return <div className="p-4 text-center">Loading...</div>
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spinner label="Loading..." />
+      </div>
+    )
   }
 
   if (!user) {
     return (
-      <div className="p-4 max-w-xl mx-auto text-center">
-        <h1 className="text-2xl font-bold mb-4">🎵 밴드방 유튜브 플레이리스트</h1>
-        <p className="mb-4">로그인이 필요합니다</p>
-        <button 
+      <div className={styles.loginContainer}>
+        <Title3>🎵 밴드방 유튜브 플레이리스트</Title3>
+        <Text>로그인이 필요합니다</Text>
+        <Button
+          appearance="primary"
+          className={styles.kakaoButton}
           onClick={handleKakaoLogin}
-          className="bg-[#FEE500] text-[#000000] px-6 py-3 rounded-lg flex items-center justify-center mx-auto"
         >
-          <img 
-            src="https://developers.kakao.com/assets/img/about/logos/kakaotalksharing/kakaotalk_sharing_btn_medium.png" 
-            alt="KakaoTalk" 
-            className="w-6 h-6 mr-2"
+          <img
+            src="https://developers.kakao.com/assets/img/about/logos/kakaotalksharing/kakaotalk_sharing_btn_medium.png"
+            alt="KakaoTalk"
+            className={styles.kakaoIcon}
           />
           카카오톡으로 로그인
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">🎵 밴드방 유튜브 플레이리스트</h1>
-        <button 
-          onClick={handleLogout}
-          className="bg-gray-500 text-white px-4 py-2 rounded"
-        >
-          로그아웃
-        </button>
-      </div>
-      <div className="flex mb-4">
-        <input value={newLink} onChange={e => setNewLink(e.target.value)} className="flex-1 border p-2 rounded" placeholder="유튜브 링크 붙여넣기" />
-        <button onClick={addLink} className="ml-2 bg-blue-500 text-white px-4 py-2 rounded">추가</button>
-      </div>
-      {links.map(link => (
-        <div key={link.id} className="mb-4">
-          <iframe width="100%" height="200" src={`https://www.youtube.com/embed/${extractId(link.youtube_url)}`} frameBorder="0" allowFullScreen></iframe>
-        </div>
-      ))}
-    </div>
+    <Routes>
+      <Route element={<Layout user={user} onLogout={handleLogout} />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/profile" element={<ProfilePage user={user} />} />
+        <Route path="/playlist" element={<HomePage />} /> {/* For now, using HomePage as PlaylistPage */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   )
-}
-
-const extractId = (url) => {
-  const match = url.match(/v=([^&]+)/)
-  return match ? match[1] : ""
 }
 
 export default App
