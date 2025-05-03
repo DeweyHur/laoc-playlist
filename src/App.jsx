@@ -11,6 +11,7 @@ import {
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
+import AuthCallback from './components/AuthCallback'
 import { supabase } from './lib/supabase'
 
 const useStyles = makeStyles({
@@ -118,7 +119,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/profile" element={<ProfilePage user={user} />} />
         <Route path="/playlist" element={<HomePage />} /> {/* For now, using HomePage as PlaylistPage */}
-        <Route path="/auth/callback" element={<Navigate to="/" replace />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
