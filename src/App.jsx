@@ -148,6 +148,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/profile" element={<ProfilePage user={user} />} />
         <Route path="/playlist" element={<HomePage />} /> {/* For now, using HomePage as PlaylistPage */}
+        <Route path="/auth/callback" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
