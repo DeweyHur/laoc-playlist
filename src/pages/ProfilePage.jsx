@@ -1,58 +1,130 @@
+import { useState, useEffect } from 'react'
 import {
   Title3,
   Text,
   makeStyles,
   tokens,
-  Card,
-  CardHeader,
-  CardPreview,
-  Avatar,
+  Button,
+  Checkbox,
+  Label,
+  Spinner,
 } from '@fluentui/react-components'
+import { supabase } from '../lib/supabase'
 
 const useStyles = makeStyles({
-  root: {
+  container: {
     padding: tokens.spacingHorizontalL,
-    maxWidth: '800px',
+    maxWidth: '600px',
     margin: '0 auto',
   },
-  profileCard: {
+  section: {
     marginBottom: tokens.spacingVerticalL,
   },
-  profileHeader: {
-    display: 'flex',
-    alignItems: 'center',
+  instrumentsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
     gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalM,
-  },
-  profileInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalS,
   },
 })
 
+const INSTRUMENTS = ['Singer', 'Piano', 'Guitar', 'Bass', 'Drum', 'Violin']
+
 function ProfilePage({ user }) {
   const styles = useStyles()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [profile, setProfile] = useState(null)
+  const [selectedInstruments, setSelectedInstruments] = useState([])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [user])
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (error) throw error
+
+      setProfile(data)
+      setSelectedInstruments(data.instruments || [])
+    } catch (error) {
+      console.error('Error fetching profile:', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleInstrumentChange = (instrument) => {
+    setSelectedInstruments(prev => {
+      if (prev.includes(instrument)) {
+        return prev.filter(i => i !== instrument)
+      } else {
+        return [...prev, instrument]
+      }
+    })
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ instruments: selectedInstruments })
+        .eq('id', user.id)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error updating profile:', error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spinner label="Loading profile..." />
+      </div>
+    )
+  }
 
   return (
-    <div className={styles.root}>
-      <Card className={styles.profileCard}>
-        <CardHeader>
-          <div className={styles.profileHeader}>
-            <Avatar 
-              name={user?.user_metadata?.name || 'User'} 
-              size={64}
-            />
-            <div className={styles.profileInfo}>
-              <Title3>{user?.user_metadata?.name || 'User'}</Title3>
-              <Text>{user?.email}</Text>
+    <div className={styles.container}>
+      <div className={styles.section}>
+        <Title3>Profile</Title3>
+        <Text>Email: {user.email}</Text>
+      </div>
+
+      <div className={styles.section}>
+        <Title3>Instruments</Title3>
+        <Text>Select the instruments you can play:</Text>
+        <div className={styles.instrumentsGrid}>
+          {INSTRUMENTS.map((instrument) => (
+            <div key={instrument}>
+              <Checkbox
+                id={instrument}
+                checked={selectedInstruments.includes(instrument)}
+                onChange={() => handleInstrumentChange(instrument)}
+                label={instrument}
+              />
             </div>
-          </div>
-        </CardHeader>
-        <CardPreview>
-          <Text>Profile information and settings will be added here.</Text>
-        </CardPreview>
-      </Card>
+          ))}
+        </div>
+        <Button
+          appearance="primary"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
     </div>
   )
 }
