@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null)
 
   const isDevelopment = import.meta.env.DEV
+  console.log('isDevelopment:', isDevelopment)
 
   useEffect(() => {
     // Check active sessions and sets the user
