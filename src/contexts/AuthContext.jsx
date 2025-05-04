@@ -34,12 +34,8 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: import.meta.env.VITE_KAKAO_AUTH_REDIRECT_URL,
-          queryParams: {
-            client_id: import.meta.env.VITE_KAKAO_CLIENT_ID,
-            client_secret: import.meta.env.VITE_KAKAO_CLIENT_SECRET,
-            scope: 'account_email profile_nickname'
-          }
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'account_email profile_nickname'
         }
       })
       if (error) throw error
