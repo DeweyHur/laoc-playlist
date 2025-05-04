@@ -14,15 +14,9 @@ CREATE TABLE IF NOT EXISTS public.playlist_videos (
 ALTER TABLE public.playlist_videos ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
-CREATE POLICY "Users can view their own playlist videos"
+CREATE POLICY "Users can view all playlist videos"
   ON public.playlist_videos FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.playlists
-      WHERE playlists.id = playlist_videos.playlist_id
-      AND playlists.user_id = auth.uid()
-    )
-  );
+  USING (true);
 
 CREATE POLICY "Users can insert their own playlist videos"
   ON public.playlist_videos FOR INSERT

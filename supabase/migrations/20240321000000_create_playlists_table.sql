@@ -11,15 +11,15 @@ CREATE TABLE IF NOT EXISTS public.playlists (
 ALTER TABLE public.playlists ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can view their own playlists" ON public.playlists;
+DROP POLICY IF EXISTS "Users can view all playlists" ON public.playlists;
 DROP POLICY IF EXISTS "Users can create their own playlists" ON public.playlists;
 DROP POLICY IF EXISTS "Users can update their own playlists" ON public.playlists;
 DROP POLICY IF EXISTS "Users can delete their own playlists" ON public.playlists;
 
 -- Create policies
-CREATE POLICY "Users can view their own playlists"
+CREATE POLICY "Users can view all playlists"
   ON public.playlists FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (true);
 
 CREATE POLICY "Users can create their own playlists"
   ON public.playlists FOR INSERT

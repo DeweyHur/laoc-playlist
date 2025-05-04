@@ -175,7 +175,6 @@ function PlaylistPage() {
       } else {
         // Fetch all playlists with video counts
         const { data, error } = await query
-          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
         if (error) throw error

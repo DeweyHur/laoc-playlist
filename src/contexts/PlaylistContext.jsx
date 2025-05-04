@@ -10,14 +10,11 @@ export function PlaylistProvider({ children }) {
   const { user } = useAuth()
 
   const fetchPlaylists = useCallback(async () => {
-    if (!user) return
-
     setLoading(true)
     try {
       const { data, error } = await supabase
         .from('playlists')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -27,7 +24,7 @@ export function PlaylistProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [])
 
   const createPlaylist = async ({ title, description }) => {
     if (!user) return
