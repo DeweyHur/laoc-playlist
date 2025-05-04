@@ -23,3 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# SQL files
+*.sql
+schema.sql
