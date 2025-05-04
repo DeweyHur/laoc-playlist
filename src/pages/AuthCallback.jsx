@@ -21,6 +21,34 @@ function AuthCallback() {
         
         if (session) {
           console.log('AuthCallback: Session found, user:', session.user)
+          
+          // Create user profile if it doesn't exist
+          const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          console.log('AuthCallback: Profile check result:', { profile, profileError })
+
+          if (!profile && !profileError) {
+            console.log('AuthCallback: Creating new user profile...')
+            // Create new user profile
+            const { error: insertError } = await supabase
+              .from('user_profiles')
+              .insert([
+                {
+                  id: session.user.id,
+                  email: session.user.email,
+                  nickname: session.user.user_metadata?.nickname || 'Anonymous',
+                  instruments: []
+                }
+              ])
+
+            console.log('AuthCallback: Profile creation result:', { insertError })
+            if (insertError) throw insertError
+          }
+
           navigate('/', { replace: true })
         } else {
           console.log('AuthCallback: No session found')
