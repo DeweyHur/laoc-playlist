@@ -32,3 +32,4 @@ dist-ssr
 # SQL files
 *.sql
 schema.sql
+!supabase/migrations/*.sql
