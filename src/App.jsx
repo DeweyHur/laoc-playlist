@@ -11,6 +11,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import HomePage from './pages/HomePage'
 import PlaylistPage from './pages/PlaylistPage'
+import PlaylistDetailPage from './pages/PlaylistDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import AuthCallback from './pages/AuthCallback'
 import Layout from './components/Layout'
@@ -37,11 +38,11 @@ const router = createBrowserRouter(
         },
         {
           path: 'playlist',
-          element: <ProtectedRoute><HomePage /></ProtectedRoute>,
+          element: <ProtectedRoute><PlaylistPage /></ProtectedRoute>,
         },
         {
           path: 'playlist/:id',
-          element: <ProtectedRoute><PlaylistPage /></ProtectedRoute>,
+          element: <ProtectedRoute><PlaylistDetailPage /></ProtectedRoute>,
         },
         {
           path: 'profile',

@@ -9,15 +9,33 @@ import {
   Spinner,
   MessageBar,
   MessageBarBody,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from '@fluentui/react-components'
+import { 
+  MoreHorizontalRegular,
+  DeleteRegular,
+  EditRegular,
+  PlayRegular,
+} from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePlaylist } from '../contexts/PlaylistContext'
+import CreatePlaylistDrawer from '../components/CreatePlaylistDrawer'
 
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingHorizontalL,
-    maxWidth: '800px',
+    maxWidth: '1200px',
     margin: '0 auto',
   },
   header: {
@@ -25,6 +43,9 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: tokens.spacingVerticalL,
+  },
+  table: {
+    width: '100%',
   },
   videoList: {
     display: 'flex',
@@ -51,6 +72,12 @@ const useStyles = makeStyles({
   errorMessage: {
     marginBottom: tokens.spacingVerticalM,
   },
+  actionsCell: {
+    width: '100px',
+  },
+  videoCount: {
+    color: tokens.colorNeutralForeground3,
+  },
 })
 
 function PlaylistPage() {
@@ -58,14 +85,18 @@ function PlaylistPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { playlists, deletePlaylist } = usePlaylist()
+  const { playlists, loading, fetchPlaylists, deletePlaylist, createPlaylist } = usePlaylist()
   const [playlist, setPlaylist] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   useEffect(() => {
-    fetchPlaylist()
-  }, [id])
+    if (id) {
+      fetchPlaylist()
+    } else {
+      fetchPlaylists()
+    }
+  }, [id, fetchPlaylists])
 
   const fetchPlaylist = async () => {
     try {
@@ -87,15 +118,12 @@ function PlaylistPage() {
     } catch (error) {
       console.error('Error fetching playlist:', error.message)
       setError('Failed to load playlist. Please try again later.')
-    } finally {
-      setLoading(false)
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (id) => {
     try {
       await deletePlaylist(id)
-      navigate('/')
     } catch (error) {
       console.error('Error deleting playlist:', error.message)
       setError('Failed to delete playlist. Please try again later.')
@@ -105,11 +133,103 @@ function PlaylistPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spinner label="Loading playlist..." />
+        <Spinner label="Loading..." />
       </div>
     )
   }
 
+  // Show all playlists if no specific playlist ID is provided
+  if (!id) {
+    return (
+      <div className={styles.container}>
+        {error && (
+          <MessageBar intent="error" className={styles.errorMessage}>
+            <MessageBarBody>{error}</MessageBarBody>
+          </MessageBar>
+        )}
+
+        <div className={styles.header}>
+          <Title3>My Playlists</Title3>
+          <Button appearance="primary" onClick={() => setIsDrawerOpen(true)}>
+            Create New Playlist
+          </Button>
+        </div>
+
+        <Table className={styles.table}>
+          <TableHeader>
+            <TableRow>
+              <TableHeaderCell>Thumbnail</TableHeaderCell>
+              <TableHeaderCell>Title</TableHeaderCell>
+              <TableHeaderCell>Videos</TableHeaderCell>
+              <TableHeaderCell>Created At</TableHeaderCell>
+              <TableHeaderCell>Actions</TableHeaderCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {playlists.map((playlist) => (
+              <TableRow key={playlist.id}>
+                <TableCell>
+                  <img
+                    src={playlist.thumbnail_url || 'https://via.placeholder.com/120x68'}
+                    alt={playlist.title}
+                    className={styles.thumbnail}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Text weight="semibold">{playlist.title}</Text>
+                </TableCell>
+                <TableCell>
+                  <Text className={styles.videoCount}>
+                    {playlist.video_count || 0} videos
+                  </Text>
+                </TableCell>
+                <TableCell>
+                  <Text>{new Date(playlist.created_at).toLocaleDateString()}</Text>
+                </TableCell>
+                <TableCell className={styles.actionsCell}>
+                  <Menu>
+                    <MenuTrigger>
+                      <Button appearance="subtle" icon={<MoreHorizontalRegular />} />
+                    </MenuTrigger>
+                    <MenuPopover>
+                      <MenuList>
+                        <MenuItem 
+                          icon={<PlayRegular />}
+                          onClick={() => navigate(`/playlist/${playlist.id}`)}
+                        >
+                          View Playlist
+                        </MenuItem>
+                        <MenuItem 
+                          icon={<EditRegular />}
+                          onClick={() => navigate(`/playlist/${playlist.id}/edit`)}
+                        >
+                          Edit
+                        </MenuItem>
+                        <MenuItem 
+                          icon={<DeleteRegular />}
+                          onClick={() => handleDelete(playlist.id)}
+                        >
+                          Delete
+                        </MenuItem>
+                      </MenuList>
+                    </MenuPopover>
+                  </Menu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <CreatePlaylistDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          onCreatePlaylist={createPlaylist}
+        />
+      </div>
+    )
+  }
+
+  // Show single playlist details if ID is provided
   if (!playlist) {
     return (
       <div className={styles.container}>
@@ -131,7 +251,7 @@ function PlaylistPage() {
       <div className={styles.header}>
         <Title3>{playlist.title}</Title3>
         {user?.id === playlist.user_id && (
-          <Button appearance="subtle" onClick={handleDelete}>
+          <Button appearance="subtle" onClick={() => handleDelete(playlist.id)}>
             Delete Playlist
           </Button>
         )}

@@ -29,7 +29,7 @@ export function PlaylistProvider({ children }) {
     }
   }, [user])
 
-  const createPlaylist = async (title) => {
+  const createPlaylist = async ({ title, description }) => {
     if (!user) return
 
     try {
@@ -38,6 +38,7 @@ export function PlaylistProvider({ children }) {
         .insert([
           {
             title,
+            description,
             user_id: user.id,
           },
         ])
