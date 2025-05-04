@@ -86,7 +86,14 @@ function HomePage() {
       setLoading(true)
       setError(null)
 
+      console.log('HomePage: Starting to fetch data...')
+
+      // Check if we have a session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('HomePage: Session check:', { session, sessionError })
+
       // Fetch recent playlists
+      console.log('HomePage: Fetching playlists...')
       const { data: playlistsData, error: playlistsError } = await supabase
         .from('playlists')
         .select(`
@@ -102,20 +109,25 @@ function HomePage() {
         .order('created_at', { ascending: false })
         .limit(6)
 
+      console.log('HomePage: Playlists fetch result:', { playlistsData, playlistsError })
+
       if (playlistsError) throw playlistsError
 
       // Fetch all videos
+      console.log('HomePage: Fetching videos...')
       const { data: videosData, error: videosError } = await supabase
         .from('playlist_videos')
         .select('*')
         .order('created_at', { ascending: false })
+
+      console.log('HomePage: Videos fetch result:', { videosData, videosError })
 
       if (videosError) throw videosError
 
       setRecentPlaylists(playlistsData)
       setAllVideos(videosData)
     } catch (error) {
-      console.error('Error fetching data:', error.message)
+      console.error('HomePage: Error fetching data:', error.message)
       setError(error.message)
     } finally {
       setLoading(false)
