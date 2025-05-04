@@ -13,6 +13,7 @@ import {
   Avatar,
   FluentProvider,
   webDarkTheme,
+  Badge,
 } from '@fluentui/react-components'
 import { 
   PersonRegular,
@@ -23,7 +24,7 @@ import {
   ChatRegular
 } from '@fluentui/react-icons'
 import { useAuth } from '../contexts/AuthContext'
-import { useState } from 'react'
+import { useChat } from '../contexts/ChatContext'
 import ChatDrawer from './ChatDrawer'
 
 const useStyles = makeStyles({
@@ -73,7 +74,7 @@ function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
   const { user, handleLogout, handleKakaoLogin } = useAuth()
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const { isOpen, hasUnread, toggleChat, closeChat } = useChat()
 
   const renderProfileMenu = () => (
     <Menu>
@@ -126,9 +127,12 @@ function Layout() {
           </MenuItem>
           <MenuItem 
             icon={<ChatRegular />}
-            onClick={() => setIsChatOpen(true)}
+            onClick={toggleChat}
           >
             채팅
+            {hasUnread && (
+              <Badge color="danger" className="ml-2" />
+            )}
           </MenuItem>
           <MenuItem 
             icon={<PersonRegular />}
@@ -166,9 +170,12 @@ function Layout() {
       <Button 
         appearance="subtle" 
         icon={<ChatRegular />}
-        onClick={() => setIsChatOpen(!isChatOpen)}
+        onClick={toggleChat}
       >
         채팅
+        {hasUnread && (
+          <Badge color="danger" className="ml-2" />
+        )}
       </Button>
     </div>
   )
@@ -195,7 +202,7 @@ function Layout() {
             <main className={styles.main}>
               <Outlet />
             </main>
-            <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+            <ChatDrawer isOpen={isOpen} onClose={closeChat} />
           </>
         ) : null}
       </div>

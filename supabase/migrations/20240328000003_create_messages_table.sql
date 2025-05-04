@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS "public"."messages" (
     "created_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     "updated_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE
+    CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("id") ON DELETE CASCADE
 );
 
 -- Add RLS policies
