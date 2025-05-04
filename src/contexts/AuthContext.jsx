@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
 
   const handleKakaoLogin = async () => {
     try {
+      console.log('Starting Kakao login process...')
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
@@ -38,17 +39,23 @@ export function AuthProvider({ children }) {
           scopes: 'account_email profile_nickname'
         }
       })
+      console.log('Kakao OAuth response:', { data, error })
+      
       if (error) throw error
 
       // Create user profile if it doesn't exist
       if (data?.user) {
+        console.log('User data received:', data.user)
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('id', data.user.id)
           .single()
 
+        console.log('Profile check result:', { profile, profileError })
+
         if (!profile && !profileError) {
+          console.log('Creating new user profile...')
           // Create new user profile
           const { error: insertError } = await supabase
             .from('user_profiles')
@@ -61,11 +68,12 @@ export function AuthProvider({ children }) {
               }
             ])
 
+          console.log('Profile creation result:', { insertError })
           if (insertError) throw insertError
         }
       }
     } catch (error) {
-      console.error('Error logging in with Kakao:', error.message)
+      console.error('Error in Kakao login process:', error.message)
       setError(error.message)
     }
   }
@@ -101,17 +109,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const handleAnonymousSignIn = async () => {
-    try {
-      setError(null)
-      const { data, error } = await supabase.auth.signInAnonymously()
-      if (error) throw error
-    } catch (error) {
-      console.error('Error signing in anonymously:', error.message)
-      setError(error.message)
-    }
-  }
-
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -133,7 +130,6 @@ export function AuthProvider({ children }) {
     handleKakaoLogin,
     handleEmailSignIn,
     handleSignUp,
-    handleAnonymousSignIn,
     handleLogout
   }
 
