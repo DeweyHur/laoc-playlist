@@ -34,21 +34,22 @@ CREATE POLICY "Users can update their own profile"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Try to insert the profile
   INSERT INTO public.user_profiles (id, email, full_name, created_at, updated_at)
   VALUES (
-    new.id, 
-    new.email, 
-    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Anonymous'),
+    new.id,
+    new.email,
+    COALESCE(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      'Anonymous'
+    ),
     TIMEZONE('utc'::text, NOW()),
     TIMEZONE('utc'::text, NOW())
   )
-  ON CONFLICT (id) DO NOTHING;  -- Prevent duplicate inserts
-
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 EXCEPTION
   WHEN OTHERS THEN
-    -- Log the error but don't fail the transaction
     RAISE WARNING 'Error creating user profile: %', SQLERRM;
     RETURN new;
 END;
