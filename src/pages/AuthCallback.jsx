@@ -11,42 +11,18 @@ function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         console.log('AuthCallback: Starting callback handling...')
-        console.log('Current URL:', window.location.href)
 
-        // Check for error in URL parameters
-        const urlParams = new URLSearchParams(window.location.search)
-        const errorParam = urlParams.get('error')
-        const errorDescription = urlParams.get('error_description')
-        
-        if (errorParam) {
-          console.error('AuthCallback: OAuth error:', { error: errorParam, description: errorDescription })
-          throw new Error(errorDescription || 'Authentication failed')
-        }
+        // Get the current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-        // Get the OAuth provider and code from URL
-        const provider = urlParams.get('provider')
-        const code = urlParams.get('code')
-        
-        if (!provider || !code) {
-          throw new Error('Missing OAuth parameters')
-        }
-
-        // Sign in with OAuth
-        const { data: { session }, error: signInError } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            queryParams: { code }
-          }
-        })
-
-        if (signInError) {
-          console.error('AuthCallback: Error signing in with OAuth:', signInError)
-          throw signInError
+        if (sessionError) {
+          console.error('AuthCallback: Error getting session:', sessionError)
+          throw sessionError
         }
 
         if (!session) {
-          console.error('AuthCallback: No session after OAuth sign in')
-          throw new Error('Failed to get session after OAuth sign in')
+          console.error('AuthCallback: No session found')
+          throw new Error('No session found')
         }
 
         console.log('AuthCallback: Session found, user:', session.user)
@@ -91,13 +67,7 @@ function AuthCallback() {
         console.error('AuthCallback: Error in callback handling:', error.message)
         setError('Failed to complete sign in. Please try again: ' + error.message)
         
-        // If it's a callback error, redirect to sign in
-        if (error.message.includes('callback is no longer runnable')) {
-          navigate('/signin', { replace: true })
-          return
-        }
-        
-        // For other errors, wait a bit before redirecting
+        // For errors, wait a bit before redirecting
         setTimeout(() => {
           navigate('/', { replace: true })
         }, 3000)
