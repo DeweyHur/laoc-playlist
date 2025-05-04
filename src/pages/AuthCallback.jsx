@@ -49,8 +49,7 @@ function AuthCallback() {
           const response = await fetch('/functions/v1/create-user', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ user: session.user })
           })
