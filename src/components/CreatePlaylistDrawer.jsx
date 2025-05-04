@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-components'
 import { DismissRegular } from '@fluentui/react-icons'
 import { useAuth } from '../contexts/AuthContext'
+import { usePlaylist } from '../contexts/PlaylistContext'
 
 const useStyles = makeStyles({
   form: {
@@ -33,9 +34,10 @@ const useStyles = makeStyles({
   },
 })
 
-function CreatePlaylistDrawer({ isOpen, onClose, onCreatePlaylist }) {
+function CreatePlaylistDrawer({ isOpen, onClose, onPlaylistCreated }) {
   const styles = useStyles()
   const { user } = useAuth()
+  const { createPlaylist } = usePlaylist()
   const [newPlaylist, setNewPlaylist] = useState({
     title: '',
     description: '',
@@ -52,7 +54,7 @@ function CreatePlaylistDrawer({ isOpen, onClose, onCreatePlaylist }) {
         throw new Error('Title is required')
       }
 
-      await onCreatePlaylist({
+      const createdPlaylist = await createPlaylist({
         title: newPlaylist.title,
         description: newPlaylist.description,
       })
@@ -63,6 +65,11 @@ function CreatePlaylistDrawer({ isOpen, onClose, onCreatePlaylist }) {
         description: '',
       })
       onClose()
+      
+      // Notify parent component that playlist was created
+      if (onPlaylistCreated) {
+        onPlaylistCreated(createdPlaylist)
+      }
     } catch (error) {
       console.error('Error creating playlist:', error.message)
       setError(error.message)

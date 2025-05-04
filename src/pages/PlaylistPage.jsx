@@ -255,7 +255,7 @@ function PlaylistPage() {
         <CreatePlaylistDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
-          onCreatePlaylist={handlePlaylistCreated}
+          onPlaylistCreated={() => fetchPlaylists()}
         />
       </div>
     )
