@@ -46,6 +46,21 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100%',
   },
+  cardHeader: {
+    padding: tokens.spacingVerticalM,
+    '& h3': {
+      margin: 0,
+      marginBottom: tokens.spacingVerticalS,
+      color: tokens.colorNeutralForeground1,
+      fontSize: tokens.fontSizeBase500,
+      fontWeight: tokens.fontWeightSemibold,
+    },
+    '& p': {
+      margin: 0,
+      color: tokens.colorNeutralForeground2,
+      fontSize: tokens.fontSizeBase300,
+    },
+  },
   thumbnail: {
     width: '100%',
     aspectRatio: '16/9',
@@ -113,6 +128,21 @@ function HomePage() {
 
       if (playlistsError) throw playlistsError
 
+      // Fetch user profiles for the playlists
+      const userIds = playlistsData?.map(p => p.user_id) || []
+      const { data: userProfiles, error: userProfilesError } = await supabase
+        .from('user_profiles')
+        .select('id, nickname')
+        .in('id', userIds)
+
+      if (userProfilesError) throw userProfilesError
+
+      // Combine playlist data with user profiles
+      const playlistsWithUsers = playlistsData?.map(playlist => ({
+        ...playlist,
+        user_profile: userProfiles?.find(profile => profile.id === playlist.user_id)
+      })) || []
+
       // Fetch all videos
       console.log('HomePage: Fetching videos...')
       const { data: videosData, error: videosError } = await supabase
@@ -124,7 +154,7 @@ function HomePage() {
 
       if (videosError) throw videosError
 
-      setRecentPlaylists(playlistsData)
+      setRecentPlaylists(playlistsWithUsers)
       setAllVideos(videosData)
     } catch (error) {
       console.error('HomePage: Error fetching data:', error.message)
@@ -158,10 +188,13 @@ function HomePage() {
         <div className={styles.playlistGrid}>
           {recentPlaylists.map((playlist) => (
             <Card key={playlist.id} className={styles.videoCard}>
-              <CardHeader>
-                <Title3>{playlist.title}</Title3>
-                <Text>{playlist.description || 'No description'}</Text>
-              </CardHeader>
+              <div className={styles.cardHeader}>
+                <h3>{playlist.title}</h3>
+                <p>{playlist.description || 'No description'}</p>
+                <Text className={styles.channelInfo}>
+                  Created by {playlist.user_profile?.nickname || 'Anonymous'}
+                </Text>
+              </div>
               <CardPreview>
                 {playlist.playlist_videos?.[0]?.thumbnail_url && (
                   <img
