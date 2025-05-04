@@ -26,6 +26,7 @@ import {
   DeleteRegular,
   EditRegular,
   PlayRegular,
+  AddRegular,
 } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -78,6 +79,12 @@ const useStyles = makeStyles({
   videoCount: {
     color: tokens.colorNeutralForeground3,
   },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+  },
 })
 
 function PlaylistPage() {
@@ -85,55 +92,77 @@ function PlaylistPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { playlists, loading, fetchPlaylists, deletePlaylist, createPlaylist } = usePlaylist()
-  const [playlist, setPlaylist] = useState(null)
+  const { deletePlaylist } = usePlaylist()
+  const [playlists, setPlaylists] = useState([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   useEffect(() => {
-    if (id) {
-      fetchPlaylist()
-    } else {
-      fetchPlaylists()
-    }
-  }, [id, fetchPlaylists])
+    fetchPlaylists()
+  }, [id])
 
-  const fetchPlaylist = async () => {
+  const fetchPlaylists = async () => {
     try {
+      setLoading(true)
       setError(null)
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('playlists')
         .select(`
           *,
           playlist_videos (
-            *,
-            video:youtube_videos (*)
+            id,
+            youtube_url,
+            title,
+            channel_title,
+            thumbnail_url
           )
         `)
-        .eq('id', id)
-        .single()
 
-      if (error) throw error
-      setPlaylist(data)
+      if (id) {
+        // Fetch single playlist with detailed video information
+        const { data, error } = await query
+          .eq('id', id)
+          .single()
+
+        if (error) throw error
+        setPlaylists([data])
+      } else {
+        // Fetch all playlists with video counts
+        const { data, error } = await query
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setPlaylists(data)
+      }
     } catch (error) {
-      console.error('Error fetching playlist:', error.message)
-      setError('Failed to load playlist. Please try again later.')
+      console.error('Error fetching playlists:', error.message)
+      setError(error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleDelete = async (id) => {
     try {
       await deletePlaylist(id)
+      setPlaylists(playlists.filter(playlist => playlist.id !== id))
     } catch (error) {
       console.error('Error deleting playlist:', error.message)
-      setError('Failed to delete playlist. Please try again later.')
+      setError(error.message)
     }
+  }
+
+  const handlePlaylistCreated = (newPlaylist) => {
+    setPlaylists([newPlaylist, ...playlists])
   }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spinner label="Loading..." />
+      <div className={styles.loadingContainer}>
+        <Spinner label="Loading playlists..." />
       </div>
     )
   }
@@ -150,18 +179,22 @@ function PlaylistPage() {
 
         <div className={styles.header}>
           <Title3>My Playlists</Title3>
-          <Button appearance="primary" onClick={() => setIsDrawerOpen(true)}>
-            Create New Playlist
+          <Button 
+            appearance="primary" 
+            icon={<AddRegular />}
+            onClick={() => setIsDrawerOpen(true)}
+          >
+            Create Playlist
           </Button>
         </div>
 
         <Table className={styles.table}>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Thumbnail</TableHeaderCell>
               <TableHeaderCell>Title</TableHeaderCell>
+              <TableHeaderCell>Description</TableHeaderCell>
               <TableHeaderCell>Videos</TableHeaderCell>
-              <TableHeaderCell>Created At</TableHeaderCell>
+              <TableHeaderCell>Created</TableHeaderCell>
               <TableHeaderCell>Actions</TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -169,47 +202,46 @@ function PlaylistPage() {
             {playlists.map((playlist) => (
               <TableRow key={playlist.id}>
                 <TableCell>
-                  <img
-                    src={playlist.thumbnail_url || 'https://via.placeholder.com/120x68'}
-                    alt={playlist.title}
-                    className={styles.thumbnail}
-                  />
+                  <Button
+                    appearance="subtle"
+                    onClick={() => navigate(`/playlist/${playlist.id}`)}
+                  >
+                    {playlist.title}
+                  </Button>
+                </TableCell>
+                <TableCell>{playlist.description || '-'}</TableCell>
+                <TableCell>{playlist.playlist_videos?.length || 0}</TableCell>
+                <TableCell>
+                  {new Date(playlist.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  <Text weight="semibold">{playlist.title}</Text>
-                </TableCell>
-                <TableCell>
-                  <Text className={styles.videoCount}>
-                    {playlist.video_count || 0} videos
-                  </Text>
-                </TableCell>
-                <TableCell>
-                  <Text>{new Date(playlist.created_at).toLocaleDateString()}</Text>
-                </TableCell>
-                <TableCell className={styles.actionsCell}>
                   <Menu>
                     <MenuTrigger>
-                      <Button appearance="subtle" icon={<MoreHorizontalRegular />} />
+                      <Button
+                        appearance="subtle"
+                        icon={<MoreHorizontalRegular />}
+                        aria-label="More actions"
+                      />
                     </MenuTrigger>
                     <MenuPopover>
                       <MenuList>
-                        <MenuItem 
+                        <MenuItem
                           icon={<PlayRegular />}
                           onClick={() => navigate(`/playlist/${playlist.id}`)}
                         >
                           View Playlist
                         </MenuItem>
-                        <MenuItem 
+                        <MenuItem
                           icon={<EditRegular />}
                           onClick={() => navigate(`/playlist/${playlist.id}/edit`)}
                         >
-                          Edit
+                          Edit Playlist
                         </MenuItem>
-                        <MenuItem 
+                        <MenuItem
                           icon={<DeleteRegular />}
                           onClick={() => handleDelete(playlist.id)}
                         >
-                          Delete
+                          Delete Playlist
                         </MenuItem>
                       </MenuList>
                     </MenuPopover>
@@ -223,13 +255,14 @@ function PlaylistPage() {
         <CreatePlaylistDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
-          onCreatePlaylist={createPlaylist}
+          onPlaylistCreated={handlePlaylistCreated}
         />
       </div>
     )
   }
 
   // Show single playlist details if ID is provided
+  const playlist = playlists[0]
   if (!playlist) {
     return (
       <div className={styles.container}>
@@ -258,7 +291,7 @@ function PlaylistPage() {
       </div>
 
       <div className={styles.videoList}>
-        {playlist.playlist_videos?.map(({ video }) => (
+        {playlist.playlist_videos?.map((video) => (
           <div key={video.id} className={styles.videoItem}>
             <img
               src={video.thumbnail_url}
