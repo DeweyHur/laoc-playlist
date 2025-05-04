@@ -4,7 +4,7 @@ const BASE_URL = 'https://www.googleapis.com/youtube/v3'
 const youtube = {
     async getVideoDetails(videoId) {
         const response = await fetch(
-            `${BASE_URL}/videos?part=snippet&id=${videoId}&key=${API_KEY}`
+            `${BASE_URL}/videos?part=snippet,contentDetails&id=${videoId}&key=${API_KEY}`
         )
 
         if (!response.ok) {

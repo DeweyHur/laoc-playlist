@@ -69,6 +69,21 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
       }
 
       const videoData = response.items[0].snippet
+      const contentDetails = response.items[0].contentDetails
+
+      // Format duration from ISO 8601 to human readable format
+      const formatDuration = (duration) => {
+        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+        const hours = (match[1] || '').replace('H', '')
+        const minutes = (match[2] || '').replace('M', '')
+        const seconds = (match[3] || '').replace('S', '')
+        
+        let result = ''
+        if (hours) result += `${hours}:`
+        result += `${minutes.padStart(2, '0')}:`
+        result += seconds.padStart(2, '0')
+        return result
+      }
 
       // Add video to playlist with metadata
       const { data, error } = await supabase
@@ -80,6 +95,7 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
             title: videoData.title,
             channel_title: videoData.channelTitle,
             thumbnail_url: videoData.thumbnails.high.url,
+            duration: formatDuration(contentDetails.duration)
           }
         ])
         .select()
@@ -103,8 +119,16 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
 
   const extractVideoId = (url) => {
     if (!url) return null
-    const match = url.match(/v=([^&]+)/)
-    return match ? match[1] : null
+    
+    // Handle traditional format: https://www.youtube.com/watch?v=VIDEO_ID
+    let match = url.match(/v=([^&]+)/)
+    if (match) return match[1]
+    
+    // Handle new format: https://youtu.be/VIDEO_ID?feature=shared
+    match = url.match(/youtu\.be\/([^?]+)/)
+    if (match) return match[1]
+    
+    return null
   }
 
   return (

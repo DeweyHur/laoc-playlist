@@ -387,6 +387,7 @@ function PlaylistPage() {
           <TableRow className={styles.tableRow}>
             <TableHeaderCell style={{ width: '120px' }}>Thumbnail</TableHeaderCell>
             <TableHeaderCell>Title</TableHeaderCell>
+            <TableHeaderCell style={{ width: '100px' }}>Duration</TableHeaderCell>
             <TableHeaderCell style={{ width: '100px' }}>Actions</TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -402,6 +403,9 @@ function PlaylistPage() {
               </TableCell>
               <TableCell className={styles.titleCell} style={{ paddingLeft: '20px' }}>
                 <Text weight="semibold" className={styles.titleText}>{video.title}</Text>
+              </TableCell>
+              <TableCell>
+                <Text>{video.duration || '-'}</Text>
               </TableCell>
               <TableCell className={styles.actionsCell}>
                 {user?.id === playlist.user_id && (

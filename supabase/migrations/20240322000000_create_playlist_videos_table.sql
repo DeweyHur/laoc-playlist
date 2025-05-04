@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.playlist_videos (
   title TEXT,
   channel_title TEXT,
   thumbnail_url TEXT,
+  duration TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

@@ -15,14 +15,12 @@ END $$;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email, full_name, nickname)
+  INSERT INTO public.user_profiles (id, email, nickname)
   VALUES (
     new.id,
     new.email,
-    new.raw_user_meta_data->>'full_name',
     COALESCE(
       new.raw_user_meta_data->>'nickname',
-      new.raw_user_meta_data->>'full_name',
       'Anonymous'
     )
   );
@@ -30,7 +28,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update existing records to use full_name as nickname if nickname is null
+-- Update existing records to use Anonymous as nickname if nickname is null
 UPDATE public.user_profiles 
-SET nickname = COALESCE(full_name, 'Anonymous')
+SET nickname = 'Anonymous'
 WHERE nickname IS NULL; 
