@@ -14,12 +14,12 @@ function AuthCallback() {
         console.log('Current URL:', window.location.href)
         
         // Let Supabase handle the OAuth callback
-        const { data: { session }, error } = await supabase.auth.getSession()
-        console.log('AuthCallback: Session check result:', { session, error })
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('AuthCallback: Session check result:', { session, error: sessionError })
         
-        if (error) {
-          console.error('AuthCallback: Error getting session:', error)
-          throw error
+        if (sessionError) {
+          console.error('AuthCallback: Error getting session:', sessionError)
+          throw sessionError
         }
         
         if (!session) {
@@ -28,6 +28,38 @@ function AuthCallback() {
         }
 
         console.log('AuthCallback: Session found, user:', session.user)
+        
+        // Check if user exists in auth.users
+        const { data: authUser, error: authError } = await supabase
+          .from('auth.users')
+          .select('id')
+          .eq('id', session.user.id)
+          .single()
+
+        console.log('AuthCallback: Auth user check result:', { authUser, error: authError })
+
+        if (authError && authError.code !== 'PGRST116') {
+          console.error('AuthCallback: Error checking auth user:', authError)
+          throw authError
+        }
+
+        if (!authUser) {
+          console.log('AuthCallback: Creating auth user...')
+          // Create the user in auth.users using the serverless function
+          const response = await fetch('/functions/v1/create-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ user: session.user })
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.message || 'Failed to create user')
+          }
+        }
         
         // Create user profile if it doesn't exist
         const { data: profile, error: profileError } = await supabase
@@ -52,7 +84,7 @@ function AuthCallback() {
               {
                 id: session.user.id,
                 email: session.user.email,
-                nickname: session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || 'Anonymous',
+                full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Anonymous',
                 instruments: []
               }
             ])
