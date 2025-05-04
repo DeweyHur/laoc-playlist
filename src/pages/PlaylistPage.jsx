@@ -20,6 +20,13 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
 } from '@fluentui/react-components'
 import { 
   MoreHorizontalRegular,
@@ -32,6 +39,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePlaylist } from '../contexts/PlaylistContext'
 import CreatePlaylistDrawer from '../components/CreatePlaylistDrawer'
+import AddVideoDrawer from '../components/AddVideoDrawer'
 
 const useStyles = makeStyles({
   container: {
@@ -47,6 +55,17 @@ const useStyles = makeStyles({
   },
   table: {
     width: '100%',
+  },
+  tableRow: {
+    '& td': {
+      padding: tokens.spacingVerticalM,
+    },
+    '& td:first-child': {
+      paddingRight: tokens.spacingHorizontalL,
+    },
+    '& td:last-child': {
+      paddingLeft: tokens.spacingHorizontalL,
+    },
   },
   videoList: {
     display: 'flex',
@@ -67,14 +86,31 @@ const useStyles = makeStyles({
     objectFit: 'cover',
     borderRadius: tokens.borderRadiusSmall,
   },
-  videoInfo: {
-    flex: 1,
+  thumbnailCell: {
+    width: '120px',
+    padding: tokens.spacingVerticalS,
+    flexShrink: 0,
+    paddingRight: tokens.spacingHorizontalL,
   },
-  errorMessage: {
-    marginBottom: tokens.spacingVerticalM,
+  titleCell: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 0,
+  },
+  titleText: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   actionsCell: {
     width: '100px',
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'center',
+    flexShrink: 0,
+    height: '100%',
+    justifyContent: 'center',
   },
   videoCount: {
     color: tokens.colorNeutralForeground3,
@@ -84,6 +120,12 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
+  },
+  deleteButton: {
+    color: tokens.colorPaletteRedForeground1,
+    ':hover': {
+      color: tokens.colorPaletteRedForeground2,
+    },
   },
 })
 
@@ -97,6 +139,8 @@ function PlaylistPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isAddVideoDrawerOpen, setIsAddVideoDrawerOpen] = useState(false)
+  const [videoToDelete, setVideoToDelete] = useState(null)
 
   useEffect(() => {
     fetchPlaylists()
@@ -157,6 +201,27 @@ function PlaylistPage() {
 
   const handlePlaylistCreated = (newPlaylist) => {
     setPlaylists([newPlaylist, ...playlists])
+  }
+
+  const handleDeleteVideo = async (videoId) => {
+    try {
+      const { error } = await supabase
+        .from('playlist_videos')
+        .delete()
+        .eq('id', videoId)
+
+      if (error) throw error
+
+      // Update the playlists state to remove the deleted video
+      setPlaylists(prev => prev.map(playlist => ({
+        ...playlist,
+        playlist_videos: playlist.playlist_videos.filter(video => video.id !== videoId)
+      })))
+      setVideoToDelete(null) // Close dialog after successful deletion
+    } catch (error) {
+      console.error('Error deleting video:', error.message)
+      setError('Failed to delete video. Please try again later.')
+    }
   }
 
   if (loading) {
@@ -273,6 +338,13 @@ function PlaylistPage() {
     )
   }
 
+  const handleVideoAdded = (newVideo) => {
+    setPlaylists(prev => [{
+      ...prev[0],
+      playlist_videos: [...(prev[0].playlist_videos || []), newVideo]
+    }])
+  }
+
   return (
     <div className={styles.container}>
       {error && (
@@ -284,27 +356,100 @@ function PlaylistPage() {
       <div className={styles.header}>
         <Title3>{playlist.title}</Title3>
         {user?.id === playlist.user_id && (
-          <Button appearance="subtle" onClick={() => handleDelete(playlist.id)}>
-            Delete Playlist
-          </Button>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+            <Button 
+              appearance="primary" 
+              icon={<AddRegular />}
+              onClick={() => setIsAddVideoDrawerOpen(true)}
+            >
+              Add Video
+            </Button>
+            <Button 
+              appearance="subtle" 
+              icon={<DeleteRegular />}
+              onClick={() => handleDelete(playlist.id)}
+            >
+              Delete Playlist
+            </Button>
+          </div>
         )}
       </div>
 
-      <div className={styles.videoList}>
-        {playlist.playlist_videos?.map((video) => (
-          <div key={video.id} className={styles.videoItem}>
-            <img
-              src={video.thumbnail_url}
-              alt={video.title}
-              className={styles.thumbnail}
-            />
-            <div className={styles.videoInfo}>
-              <Text weight="semibold">{video.title}</Text>
-              <Text size={200}>{video.channel_title}</Text>
-            </div>
-          </div>
-        ))}
-      </div>
+      {playlist.description && (
+        <Text className={styles.description}>{playlist.description}</Text>
+      )}
+
+      <Table className={styles.table}>
+        <TableHeader>
+          <TableRow className={styles.tableRow}>
+            <TableHeaderCell style={{ width: '120px' }}>Thumbnail</TableHeaderCell>
+            <TableHeaderCell>Title</TableHeaderCell>
+            <TableHeaderCell style={{ width: '100px' }}>Actions</TableHeaderCell>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {playlist.playlist_videos?.map((video) => (
+            <TableRow key={video.id} className={styles.tableRow}>
+              <TableCell className={styles.thumbnailCell}>
+                <img
+                  src={video.thumbnail_url}
+                  alt={video.title}
+                  className={styles.thumbnail}
+                />
+              </TableCell>
+              <TableCell className={styles.titleCell} style={{ paddingLeft: '20px' }}>
+                <Text weight="semibold" className={styles.titleText}>{video.title}</Text>
+              </TableCell>
+              <TableCell className={styles.actionsCell}>
+                {user?.id === playlist.user_id && (
+                  <Dialog open={videoToDelete?.id === video.id} onOpenChange={(e, data) => {
+                    if (!data.open) setVideoToDelete(null)
+                  }}>
+                    <DialogTrigger>
+                      <Button
+                        appearance="subtle"
+                        icon={<DeleteRegular />}
+                        onClick={() => setVideoToDelete(video)}
+                        className={styles.deleteButton}
+                        title="Delete video"
+                      />
+                    </DialogTrigger>
+                    <DialogSurface>
+                      <DialogBody>
+                        <DialogTitle>Delete Video</DialogTitle>
+                        <DialogContent>
+                          Are you sure you want to delete "{video.title}" from this playlist?
+                        </DialogContent>
+                        <DialogActions>
+                          <Button appearance="secondary" onClick={() => setVideoToDelete(null)}>
+                            Cancel
+                          </Button>
+                          <Button appearance="primary" onClick={() => handleDeleteVideo(video.id)}>
+                            Delete
+                          </Button>
+                        </DialogActions>
+                      </DialogBody>
+                    </DialogSurface>
+                  </Dialog>
+                )}
+                <Button
+                  appearance="subtle"
+                  icon={<PlayRegular />}
+                  onClick={() => window.open(video.youtube_url, '_blank')}
+                  title="Watch on YouTube"
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <AddVideoDrawer
+        isOpen={isAddVideoDrawerOpen}
+        onClose={() => setIsAddVideoDrawerOpen(false)}
+        playlistId={id}
+        onVideoAdded={handleVideoAdded}
+      />
     </div>
   )
 }
