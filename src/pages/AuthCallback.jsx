@@ -10,9 +10,39 @@ function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { error } = await supabase.auth.getSession()
-        if (error) throw error
-        navigate('/', { replace: true })
+        // Get the hash fragment from the URL
+        const hash = window.location.hash
+        if (!hash) {
+          throw new Error('No hash fragment found in URL')
+        }
+
+        // Parse the hash fragment
+        const params = new URLSearchParams(hash.substring(1))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        const expiresIn = params.get('expires_in')
+
+        if (!accessToken) {
+          throw new Error('No access token found in URL')
+        }
+
+        // Set the session
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+
+        if (sessionError) throw sessionError
+
+        // Get the session to verify it was set correctly
+        const { data: { session }, error: getSessionError } = await supabase.auth.getSession()
+        if (getSessionError) throw getSessionError
+
+        if (session) {
+          navigate('/', { replace: true })
+        } else {
+          throw new Error('Failed to establish session')
+        }
       } catch (error) {
         console.error('Error handling auth callback:', error.message)
         setError('Failed to complete sign in. Please try again.')

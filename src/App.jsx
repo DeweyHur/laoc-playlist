@@ -7,6 +7,7 @@ import ProfilePage from './pages/ProfilePage'
 import { AuthProvider } from './contexts/AuthContext'
 import { PlaylistProvider } from './contexts/PlaylistContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AuthCallback from './pages/AuthCallback'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <PlaylistProvider>
           <Router>
             <Routes>
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route element={
                 <ProtectedRoute>
                   <Layout />
