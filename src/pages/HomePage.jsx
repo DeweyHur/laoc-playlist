@@ -1,37 +1,68 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Input,
+  Title2,
   Title3,
   Text,
   makeStyles,
   tokens,
-  Card,
-  CardHeader,
-  CardPreview,
   Button,
   Spinner,
   MessageBar,
   MessageBarBody,
+  Card,
+  CardHeader,
+  CardPreview,
+  CardFooter,
 } from '@fluentui/react-components'
+import { PlayRegular } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
-import { usePlaylist } from '../contexts/PlaylistContext'
 
 const useStyles = makeStyles({
-  root: {
+  container: {
     padding: tokens.spacingHorizontalL,
-    maxWidth: '800px',
+    maxWidth: '1200px',
     margin: '0 auto',
   },
-  inputGroup: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalS,
+  header: {
     marginBottom: tokens.spacingVerticalL,
   },
-  videoCard: {
+  recentPlaylists: {
+    marginBottom: tokens.spacingVerticalXXL,
+  },
+  playlistGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
-    cursor: 'pointer',
+  },
+  videoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingHorizontalL,
+  },
+  videoCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  thumbnail: {
+    width: '100%',
+    aspectRatio: '16/9',
+    objectFit: 'cover',
+  },
+  videoInfo: {
+    padding: tokens.spacingVerticalM,
+  },
+  channelInfo: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: tokens.spacingVerticalXS,
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '50vh',
   },
   errorMessage: {
     marginBottom: tokens.spacingVerticalM,
@@ -41,94 +72,135 @@ const useStyles = makeStyles({
 function HomePage() {
   const styles = useStyles()
   const navigate = useNavigate()
-  const { user, handleKakaoLogin } = useAuth()
-  const { playlists, loading, fetchPlaylists, createPlaylist } = usePlaylist()
-  const [newLink, setNewLink] = useState("")
+  const [recentPlaylists, setRecentPlaylists] = useState([])
+  const [allVideos, setAllVideos] = useState([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (user) {
-      fetchPlaylists()
-    }
-  }, [user, fetchPlaylists])
+    fetchData()
+  }, [])
 
-  const handleAddLink = async () => {
-    if (!newLink) return
-
+  const fetchData = async () => {
     try {
+      setLoading(true)
       setError(null)
-      const videoId = extractId(newLink)
-      if (!videoId) {
-        setError('Invalid YouTube URL')
-        return
-      }
 
-      await createPlaylist(newLink)
-      setNewLink("")
-    } catch (err) {
-      console.error('Error adding link:', err)
-      setError('Failed to add playlist. Please try again.')
+      // Fetch recent playlists
+      const { data: playlistsData, error: playlistsError } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          playlist_videos (
+            id,
+            youtube_url,
+            title,
+            channel_title,
+            thumbnail_url
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      if (playlistsError) throw playlistsError
+
+      // Fetch all videos
+      const { data: videosData, error: videosError } = await supabase
+        .from('playlist_videos')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (videosError) throw videosError
+
+      setRecentPlaylists(playlistsData)
+      setAllVideos(videosData)
+    } catch (error) {
+      console.error('Error fetching data:', error.message)
+      setError(error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
   if (loading) {
     return (
-      <div className={styles.root}>
-        <Spinner label="Loading..." />
+      <div className={styles.loadingContainer}>
+        <Spinner label="Loading content..." />
       </div>
     )
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.container}>
       {error && (
         <MessageBar intent="error" className={styles.errorMessage}>
           <MessageBarBody>{error}</MessageBarBody>
         </MessageBar>
       )}
-      
-      <div className={styles.inputGroup}>
-        <Input
-          value={newLink}
-          onChange={(e) => setNewLink(e.target.value)}
-          placeholder="유튜브 링크 붙여넣기"
-          style={{ flex: 1 }}
-        />
-        <Button appearance="primary" onClick={handleAddLink}>
-          추가
-        </Button>
+
+      <div className={styles.recentPlaylists}>
+        <div className={styles.header}>
+          <Title2>Recent Playlists</Title2>
+        </div>
+
+        <div className={styles.playlistGrid}>
+          {recentPlaylists.map((playlist) => (
+            <Card key={playlist.id} className={styles.videoCard}>
+              <CardHeader>
+                <Title3>{playlist.title}</Title3>
+                <Text>{playlist.description || 'No description'}</Text>
+              </CardHeader>
+              <CardPreview>
+                {playlist.playlist_videos?.[0]?.thumbnail_url && (
+                  <img
+                    src={playlist.playlist_videos[0].thumbnail_url}
+                    alt={playlist.title}
+                    className={styles.thumbnail}
+                  />
+                )}
+              </CardPreview>
+              <CardFooter>
+                <Button
+                  appearance="primary"
+                  icon={<PlayRegular />}
+                  onClick={() => navigate(`/playlist/${playlist.id}`)}
+                >
+                  View Playlist
+                </Button>
+                <Text className={styles.channelInfo}>
+                  {playlist.playlist_videos?.length || 0} videos
+                </Text>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
-      {playlists.map(playlist => (
-        <Card 
-          key={playlist.id} 
-          className={styles.videoCard}
-          onClick={() => navigate(`/playlist/${playlist.id}`)}
-        >
-          <CardHeader>
-            <Text weight="semibold">{playlist.title}</Text>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              {playlist.youtube_url}
-            </Text>
-          </CardHeader>
-          <CardPreview>
-            <iframe
-              width="100%"
-              height="200"
-              src={`https://www.youtube.com/embed/${extractId(playlist.youtube_url)}`}
-              frameBorder="0"
-              allowFullScreen
-            />
-          </CardPreview>
-        </Card>
-      ))}
+
+      <div>
+        <div className={styles.header}>
+          <Title2>Latest Videos</Title2>
+        </div>
+
+        <div className={styles.videoGrid}>
+          {allVideos.map((video) => (
+            <Card key={video.id} className={styles.videoCard}>
+              <CardPreview>
+                <img
+                  src={video.thumbnail_url}
+                  alt={video.title}
+                  className={styles.thumbnail}
+                />
+              </CardPreview>
+              <div className={styles.videoInfo}>
+                <Title3>{video.title}</Title3>
+                <Text className={styles.channelInfo}>{video.channel_title}</Text>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   )
-}
-
-const extractId = (url) => {
-  if (!url) return ""
-  const match = url.match(/v=([^&]+)/)
-  return match ? match[1] : ""
 }
 
 export default HomePage 

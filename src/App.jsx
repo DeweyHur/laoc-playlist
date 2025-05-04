@@ -1,83 +1,31 @@
-import { useState, useEffect } from 'react'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import { supabase } from './lib/supabase'
-import { AuthProvider } from './contexts/AuthContext'
-import { PlaylistProvider } from './contexts/PlaylistContext'
-import { ThemeProvider } from './contexts/ThemeContext'
-import { Toaster } from 'react-hot-toast'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { FluentProvider, webLightTheme } from '@fluentui/react-components'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-
 import HomePage from './pages/HomePage'
 import PlaylistPage from './pages/PlaylistPage'
-import PlaylistDetailPage from './pages/PlaylistDetailPage'
-import ProfilePage from './pages/ProfilePage'
-import AuthCallback from './pages/AuthCallback'
 import Layout from './components/Layout'
-import ProtectedRoute from './components/ProtectedRoute'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-})
-
-const router = createBrowserRouter(
-  [
-    {
-      path: '/',
-      element: <Layout />,
-      children: [
-        {
-          index: true,
-          element: <ProtectedRoute><HomePage /></ProtectedRoute>,
-        },
-        {
-          path: 'playlist',
-          element: <ProtectedRoute><PlaylistPage /></ProtectedRoute>,
-        },
-        {
-          path: 'playlist/:id',
-          element: <ProtectedRoute><PlaylistDetailPage /></ProtectedRoute>,
-        },
-        {
-          path: 'profile',
-          element: <ProtectedRoute><ProfilePage /></ProtectedRoute>,
-        },
-        {
-          path: 'auth/callback',
-          element: <AuthCallback />,
-        },
-      ],
-    },
-  ],
-  {
-    future: {
-      v7_startTransition: true,
-      v7_relativeSplatPath: true
-    }
-  }
-)
+import ProfilePage from './pages/ProfilePage'
+import { AuthProvider } from './contexts/AuthContext'
+import { PlaylistProvider } from './contexts/PlaylistContext'
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <FluentProvider theme={webLightTheme}>
-        <ThemeProvider>
-          <AuthProvider>
-            <PlaylistProvider>
-              <RouterProvider router={router} />
-              <Toaster position="top-center" />
-            </PlaylistProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </FluentProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <FluentProvider theme={webLightTheme}>
+      <AuthProvider>
+        <PlaylistProvider>
+          <Router>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/playlist" element={<PlaylistPage />} />
+                <Route path="/playlist/:id" element={<PlaylistPage />} />
+                <Route path="/playlist/:id/edit" element={<PlaylistPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
+            </Routes>
+          </Router>
+        </PlaylistProvider>
+      </AuthProvider>
+    </FluentProvider>
   )
 }
 

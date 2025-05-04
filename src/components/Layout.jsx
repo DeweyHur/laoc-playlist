@@ -11,8 +11,6 @@ import {
   MenuItem,
   Button,
   Avatar,
-  TabList,
-  Tab,
 } from '@fluentui/react-components'
 import { 
   PersonRegular,
@@ -67,7 +65,7 @@ const useStyles = makeStyles({
 function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
-  const { user, handleLogout } = useAuth()
+  const { user, handleLogout, handleKakaoLogin } = useAuth()
 
   const renderProfileMenu = () => (
     <Menu>
@@ -136,16 +134,22 @@ function Layout() {
   )
 
   const renderDesktopMenu = () => (
-    <TabList
-      className={styles.desktopMenu}
-      onTabSelect={(e, data) => {
-        if (data.value === 'home') navigate('/')
-        if (data.value === 'playlist') navigate('/playlist')
-      }}
-    >
-      <Tab value="home" icon={<HomeRegular />}>홈</Tab>
-      <Tab value="playlist" icon={<ListRegular />}>플레이리스트</Tab>
-    </TabList>
+    <div className={styles.desktopMenu}>
+      <Button 
+        appearance="subtle" 
+        icon={<HomeRegular />}
+        onClick={() => navigate('/')}
+      >
+        홈
+      </Button>
+      <Button 
+        appearance="subtle" 
+        icon={<ListRegular />}
+        onClick={() => navigate('/playlist')}
+      >
+        플레이리스트
+      </Button>
+    </div>
   )
 
   return (
@@ -154,7 +158,11 @@ function Layout() {
         <Title3>🎵 밴드방 유튜브 플레이리스트</Title3>
         <div className={styles.navContainer}>
           {renderDesktopMenu()}
-          {renderProfileMenu()}
+          {user ? renderProfileMenu() : (
+            <Button appearance="primary" onClick={handleKakaoLogin}>
+              카카오 로그인
+            </Button>
+          )}
           <div className={styles.mobileMenu}>
             {renderMobileMenu()}
           </div>
