@@ -56,7 +56,7 @@ function AuthCallback() {
         }
       } catch (error) {
         console.error('AuthCallback: Error in callback handling:', error.message)
-        setError('Failed to complete sign in. Please try again.')
+        setError('Failed to complete sign in. Please try again:', error.message)
         // Still navigate to home after a delay to show the error
         setTimeout(() => {
           navigate('/', { replace: true })
