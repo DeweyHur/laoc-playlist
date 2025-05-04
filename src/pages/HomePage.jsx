@@ -14,9 +14,24 @@ import {
   CardHeader,
   CardPreview,
   CardFooter,
+  Input,
+  Textarea,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
 } from '@fluentui/react-components'
-import { PlayRegular } from '@fluentui/react-icons'
+import { 
+  PlayRegular,
+  HeartRegular,
+  HeartFilled,
+  ChatRegular,
+} from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 const useStyles = makeStyles({
   container: {
@@ -82,15 +97,58 @@ const useStyles = makeStyles({
   errorMessage: {
     marginBottom: tokens.spacingVerticalM,
   },
+  actionButtons: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'center',
+  },
+  likeButton: {
+    minWidth: 'auto',
+    padding: tokens.spacingHorizontalS,
+  },
+  commentButton: {
+    minWidth: 'auto',
+    padding: tokens.spacingHorizontalS,
+  },
+  commentSection: {
+    marginTop: tokens.spacingVerticalM,
+  },
+  commentInput: {
+    marginTop: tokens.spacingVerticalS,
+  },
+  commentList: {
+    marginTop: tokens.spacingVerticalM,
+  },
+  comment: {
+    padding: tokens.spacingVerticalS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  commentHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalXS,
+  },
+  commentContent: {
+    color: tokens.colorNeutralForeground1,
+  },
+  commentAuthor: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+  },
 })
 
 function HomePage() {
   const styles = useStyles()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [recentPlaylists, setRecentPlaylists] = useState([])
   const [allVideos, setAllVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null)
+  const [newComment, setNewComment] = useState('')
+  const [comments, setComments] = useState({})
 
   useEffect(() => {
     fetchData()
@@ -119,7 +177,9 @@ function HomePage() {
             title,
             channel_title,
             thumbnail_url
-          )
+          ),
+          likes:likes(count),
+          comments:comments(count)
         `)
         .order('created_at', { ascending: false })
         .limit(6)
@@ -137,10 +197,21 @@ function HomePage() {
 
       if (userProfilesError) throw userProfilesError
 
-      // Combine playlist data with user profiles
+      // Fetch likes for the current user
+      const { data: userLikes, error: userLikesError } = await supabase
+        .from('likes')
+        .select('playlist_id')
+        .eq('user_id', user?.id)
+
+      if (userLikesError) throw userLikesError
+
+      // Combine playlist data with user profiles and likes
       const playlistsWithUsers = playlistsData?.map(playlist => ({
         ...playlist,
-        user_profile: userProfiles?.find(profile => profile.id === playlist.user_id)
+        user_profile: userProfiles?.find(profile => profile.id === playlist.user_id),
+        isLiked: userLikes?.some(like => like.playlist_id === playlist.id) || false,
+        likes_count: playlist.likes?.[0]?.count || 0,
+        comments_count: playlist.comments?.[0]?.count || 0
       })) || []
 
       // Fetch all videos
@@ -161,6 +232,122 @@ function HomePage() {
       setError(error.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLike = async (playlistId) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    try {
+      const playlist = recentPlaylists.find(p => p.id === playlistId)
+      if (playlist.isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .eq('playlist_id', playlistId)
+          .eq('user_id', user.id)
+
+        if (error) throw error
+
+        setRecentPlaylists(prev => prev.map(p => 
+          p.id === playlistId 
+            ? { ...p, isLiked: false, likes_count: p.likes_count - 1 }
+            : p
+        ))
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('likes')
+          .insert([{ playlist_id: playlistId, user_id: user.id }])
+
+        if (error) throw error
+
+        setRecentPlaylists(prev => prev.map(p => 
+          p.id === playlistId 
+            ? { ...p, isLiked: true, likes_count: p.likes_count + 1 }
+            : p
+        ))
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error.message)
+      setError(error.message)
+    }
+  }
+
+  const handleComment = async (playlistId) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    if (!newComment.trim()) return
+
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .insert([{
+          playlist_id: playlistId,
+          user_id: user.id,
+          content: newComment.trim()
+        }])
+
+      if (error) throw error
+
+      // Fetch updated comments
+      const { data: updatedComments, error: commentsError } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          user:user_profiles(nickname)
+        `)
+        .eq('playlist_id', playlistId)
+        .order('created_at', { ascending: false })
+
+      if (commentsError) throw commentsError
+
+      setComments(prev => ({
+        ...prev,
+        [playlistId]: updatedComments
+      }))
+
+      // Update comments count
+      setRecentPlaylists(prev => prev.map(p => 
+        p.id === playlistId 
+          ? { ...p, comments_count: p.comments_count + 1 }
+          : p
+      ))
+
+      setNewComment('')
+    } catch (error) {
+      console.error('Error adding comment:', error.message)
+      setError(error.message)
+    }
+  }
+
+  const fetchComments = async (playlistId) => {
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          user:user_profiles(nickname)
+        `)
+        .eq('playlist_id', playlistId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setComments(prev => ({
+        ...prev,
+        [playlistId]: data
+      }))
+    } catch (error) {
+      console.error('Error fetching comments:', error.message)
+      setError(error.message)
     }
   }
 
@@ -205,13 +392,77 @@ function HomePage() {
                 )}
               </CardPreview>
               <CardFooter>
-                <Button
-                  appearance="primary"
-                  icon={<PlayRegular />}
-                  onClick={() => navigate(`/playlist/${playlist.id}`)}
-                >
-                  View Playlist
-                </Button>
+                <div className={styles.actionButtons}>
+                  <Button
+                    appearance="primary"
+                    icon={<PlayRegular />}
+                    onClick={() => navigate(`/playlist/${playlist.id}`)}
+                  >
+                    View Playlist
+                  </Button>
+                  <Button
+                    appearance="subtle"
+                    icon={playlist.isLiked ? <HeartFilled /> : <HeartRegular />}
+                    onClick={() => handleLike(playlist.id)}
+                    className={styles.likeButton}
+                  >
+                    {playlist.likes_count}
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger>
+                      <Button
+                        appearance="subtle"
+                        icon={<ChatRegular />}
+                        className={styles.commentButton}
+                        onClick={() => {
+                          setSelectedPlaylist(playlist)
+                          fetchComments(playlist.id)
+                        }}
+                      >
+                        {playlist.comments_count}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogSurface>
+                      <DialogBody>
+                        <DialogTitle>Comments</DialogTitle>
+                        <DialogContent>
+                          <div className={styles.commentSection}>
+                            <Textarea
+                              placeholder="Write a comment..."
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              className={styles.commentInput}
+                            />
+                            <Button
+                              appearance="primary"
+                              onClick={() => handleComment(playlist.id)}
+                              disabled={!newComment.trim()}
+                            >
+                              Post Comment
+                            </Button>
+                            <div className={styles.commentList}>
+                              {comments[playlist.id]?.map((comment) => (
+                                <div key={comment.id} className={styles.comment}>
+                                  <div className={styles.commentHeader}>
+                                    <Text className={styles.commentAuthor}>
+                                      {comment.user?.nickname || 'Anonymous'}
+                                    </Text>
+                                    <Text className={styles.commentAuthor}>
+                                      {new Date(comment.created_at).toLocaleDateString()}
+                                    </Text>
+                                  </div>
+                                  <Text className={styles.commentContent}>
+                                    {comment.content}
+                                  </Text>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </DialogBody>
+                    </DialogSurface>
+                  </Dialog>
+                </div>
                 <Text className={styles.channelInfo}>
                   {playlist.playlist_videos?.length || 0} videos
                 </Text>

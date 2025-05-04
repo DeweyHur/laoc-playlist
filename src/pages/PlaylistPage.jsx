@@ -160,7 +160,8 @@ function PlaylistPage() {
             youtube_url,
             title,
             channel_title,
-            thumbnail_url
+            thumbnail_url,
+            duration
           )
         `)
 

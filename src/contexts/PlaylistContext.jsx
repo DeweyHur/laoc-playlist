@@ -27,9 +27,29 @@ export function PlaylistProvider({ children }) {
   }, [])
 
   const createPlaylist = async ({ title, description }) => {
-    if (!user) return
+    if (!user) {
+      console.error('No user found when trying to create playlist')
+      throw new Error('You must be signed in to create a playlist')
+    }
+
+    console.log('Creating playlist with user:', user)
 
     try {
+      // First verify the user exists in auth.users
+      const { data: authUser, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        console.error('Error getting auth user:', authError)
+        throw authError
+      }
+
+      if (!authUser.user) {
+        console.error('No auth user found')
+        throw new Error('Authentication error: No user found')
+      }
+
+      console.log('Auth user verified:', authUser.user)
+
+      // Then create the playlist
       const { data, error } = await supabase
         .from('playlists')
         .insert([
@@ -42,7 +62,12 @@ export function PlaylistProvider({ children }) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error creating playlist:', error)
+        throw error
+      }
+
+      console.log('Playlist created successfully:', data)
       setPlaylists((prev) => [data, ...prev])
       return data
     } catch (error) {
