@@ -12,7 +12,7 @@ CREATE TYPE instrument_type AS ENUM (
 CREATE TABLE IF NOT EXISTS public.user_profiles (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   email TEXT,
-  full_name TEXT,
+  nickname TEXT DEFAULT 'Anonymous',
   instruments instrument_type[] DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -30,26 +30,38 @@ CREATE POLICY "Users can update their own profile"
   ON public.user_profiles FOR UPDATE
   USING (auth.uid() = id);
 
+CREATE POLICY "Service role can insert profiles"
+  ON public.user_profiles FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
 -- Create function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email, full_name, created_at, updated_at)
+  -- Add a small delay to ensure auth.users record is fully committed
+  PERFORM pg_sleep(0.1);
+  
+  -- Check if user exists in auth.users
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = new.id) THEN
+    RAISE EXCEPTION 'User % does not exist in auth.users', new.id;
+  END IF;
+
+  -- Try to insert the profile
+  INSERT INTO public.user_profiles (id, email, nickname, created_at, updated_at)
   VALUES (
-    new.id,
-    new.email,
-    COALESCE(
-      new.raw_user_meta_data->>'full_name',
-      new.raw_user_meta_data->>'name',
-      'Anonymous'
-    ),
+    new.id, 
+    new.email, 
+    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Anonymous'),
     TIMEZONE('utc'::text, NOW()),
     TIMEZONE('utc'::text, NOW())
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO NOTHING;  -- Prevent duplicate inserts
+
   RETURN new;
 EXCEPTION
   WHEN OTHERS THEN
+    -- Log the error but don't fail the transaction
     RAISE WARNING 'Error creating user profile: %', SQLERRM;
     RETURN new;
 END;
