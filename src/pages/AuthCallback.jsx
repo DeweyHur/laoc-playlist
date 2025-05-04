@@ -29,37 +29,6 @@ function AuthCallback() {
 
         console.log('AuthCallback: Session found, user:', session.user)
         
-        // Check if user exists in auth.users
-        const { data: authUser, error: authError } = await supabase
-          .from('auth.users')
-          .select('id')
-          .eq('id', session.user.id)
-          .single()
-
-        console.log('AuthCallback: Auth user check result:', { authUser, error: authError })
-
-        if (authError && authError.code !== 'PGRST116') {
-          console.error('AuthCallback: Error checking auth user:', authError)
-          throw authError
-        }
-
-        if (!authUser) {
-          console.log('AuthCallback: Creating auth user...')
-          // Create the user in auth.users using the serverless function
-          const response = await fetch('/functions/v1/create-user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ user: session.user })
-          })
-
-          if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.message || 'Failed to create user')
-          }
-        }
-        
         // Create user profile if it doesn't exist
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
