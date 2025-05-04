@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import ProfilePage from './pages/ProfilePage'
 import { AuthProvider } from './contexts/AuthContext'
 import { PlaylistProvider } from './contexts/PlaylistContext'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -14,7 +15,11 @@ function App() {
         <PlaylistProvider>
           <Router>
             <Routes>
-              <Route element={<Layout />}>
+              <Route element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/playlist" element={<PlaylistPage />} />
                 <Route path="/playlist/:id" element={<PlaylistPage />} />

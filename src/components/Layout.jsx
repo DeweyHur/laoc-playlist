@@ -168,9 +168,11 @@ function Layout() {
           </div>
         </div>
       </header>
-      <main className={styles.main}>
-        <Outlet />
-      </main>
+      {user ? (
+        <main className={styles.main}>
+          <Outlet />
+        </main>
+      ) : null}
     </div>
   )
 }
