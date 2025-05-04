@@ -31,7 +31,7 @@ function AuthCallback() {
 
           console.log('AuthCallback: Profile check result:', { profile, profileError })
 
-          if (!profile && !profileError) {
+          if (!profile) {
             console.log('AuthCallback: Creating new user profile...')
             // Create new user profile
             const { error: insertError } = await supabase
