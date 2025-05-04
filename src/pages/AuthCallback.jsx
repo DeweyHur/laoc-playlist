@@ -67,25 +67,20 @@ function AuthCallback() {
 
         if (!profile) {
           console.log('AuthCallback: Creating new user profile...')
-          // Call the create-user edge function
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user: {
+          // Create new user profile
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert([
+              {
                 id: session.user.id,
                 email: session.user.email,
-                user_metadata: session.user.user_metadata
+                nickname: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Anonymous'
               }
-            })
-          })
+            ])
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error('AuthCallback: Error creating profile:', errorData)
-            throw new Error(errorData.error || 'Failed to create user profile')
+          if (insertError) {
+            console.error('AuthCallback: Error creating profile:', insertError)
+            throw insertError
           }
 
           console.log('AuthCallback: Profile created successfully')
