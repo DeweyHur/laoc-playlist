@@ -39,6 +39,31 @@ export function AuthProvider({ children }) {
         }
       })
       if (error) throw error
+
+      // Create user profile if it doesn't exist
+      if (data?.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (!profile && !profileError) {
+          // Create new user profile
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert([
+              {
+                id: data.user.id,
+                email: data.user.email,
+                nickname: data.user.user_metadata?.nickname || 'Anonymous',
+                instruments: []
+              }
+            ])
+
+          if (insertError) throw insertError
+        }
+      }
     } catch (error) {
       console.error('Error logging in with Kakao:', error.message)
       setError(error.message)
