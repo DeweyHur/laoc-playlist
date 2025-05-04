@@ -171,10 +171,14 @@ function PlaylistPage() {
           .single()
 
         if (error) throw error
+        if (!data) {
+          throw new Error('Playlist not found')
+        }
         setPlaylists([data])
       } else {
         // Fetch all playlists with video counts
         const { data, error } = await query
+          .eq('user_id', user.id) // Only filter by user when fetching all playlists
           .order('created_at', { ascending: false })
 
         if (error) throw error
