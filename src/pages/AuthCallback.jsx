@@ -40,7 +40,7 @@ function AuthCallback() {
                 {
                   id: session.user.id,
                   email: session.user.email,
-                  nickname: session.user.user_metadata?.nickname || 'Anonymous',
+                  nickname: session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || 'Anonymous',
                   instruments: []
                 }
               ])
