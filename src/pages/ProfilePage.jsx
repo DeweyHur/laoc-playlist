@@ -8,34 +8,52 @@ import {
   Checkbox,
   Label,
   Spinner,
+  MessageBar,
+  MessageBarBody,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
+  TableSelectionCell,
 } from '@fluentui/react-components'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingHorizontalL,
-    maxWidth: '600px',
+    maxWidth: '800px',
     margin: '0 auto',
   },
   section: {
     marginBottom: tokens.spacingVerticalL,
   },
-  instrumentsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-    gap: tokens.spacingHorizontalM,
-    marginTop: tokens.spacingVerticalS,
+  table: {
+    width: '100%',
+    marginTop: tokens.spacingVerticalM,
+  },
+  errorMessage: {
+    marginBottom: tokens.spacingVerticalM,
+  },
+  instrumentCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
   },
 })
 
 const INSTRUMENTS = ['Singer', 'Piano', 'Guitar', 'Bass', 'Drum', 'Violin']
 
-function ProfilePage({ user }) {
+function ProfilePage() {
   const styles = useStyles()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState(null)
   const [selectedInstruments, setSelectedInstruments] = useState([])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchProfile()
@@ -43,6 +61,7 @@ function ProfilePage({ user }) {
 
   const fetchProfile = async () => {
     try {
+      setError(null)
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -55,6 +74,7 @@ function ProfilePage({ user }) {
       setSelectedInstruments(data.instruments || [])
     } catch (error) {
       console.error('Error fetching profile:', error.message)
+      setError('Failed to load profile. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -72,6 +92,7 @@ function ProfilePage({ user }) {
 
   const handleSave = async () => {
     setSaving(true)
+    setError(null)
     try {
       const { error } = await supabase
         .from('user_profiles')
@@ -81,6 +102,7 @@ function ProfilePage({ user }) {
       if (error) throw error
     } catch (error) {
       console.error('Error updating profile:', error.message)
+      setError('Failed to save changes. Please try again later.')
     } finally {
       setSaving(false)
     }
@@ -96,26 +118,66 @@ function ProfilePage({ user }) {
 
   return (
     <div className={styles.container}>
+      {error && (
+        <MessageBar intent="error" className={styles.errorMessage}>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
+      
       <div className={styles.section}>
-        <Title3>Profile</Title3>
-        <Text>Email: {user.email}</Text>
+        <Title3>Profile Information</Title3>
+        <Table className={styles.table}>
+          <TableHeader>
+            <TableRow>
+              <TableHeaderCell>Field</TableHeaderCell>
+              <TableHeaderCell>Value</TableHeaderCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell>Email</TableCell>
+              <TableCell>{user.email}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>User ID</TableCell>
+              <TableCell>{user.id}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Created At</TableCell>
+              <TableCell>{new Date(user.created_at).toLocaleString()}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
       <div className={styles.section}>
         <Title3>Instruments</Title3>
         <Text>Select the instruments you can play:</Text>
-        <div className={styles.instrumentsGrid}>
-          {INSTRUMENTS.map((instrument) => (
-            <div key={instrument}>
-              <Checkbox
-                id={instrument}
-                checked={selectedInstruments.includes(instrument)}
-                onChange={() => handleInstrumentChange(instrument)}
-                label={instrument}
-              />
-            </div>
-          ))}
-        </div>
+        <Table className={styles.table}>
+          <TableHeader>
+            <TableRow>
+              <TableHeaderCell>Instrument</TableHeaderCell>
+              <TableHeaderCell>Selected</TableHeaderCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {INSTRUMENTS.map((instrument) => (
+              <TableRow key={instrument}>
+                <TableCell>{instrument}</TableCell>
+                <TableCell>
+                  <div className={styles.instrumentCell}>
+                    <Checkbox
+                      id={instrument}
+                      checked={selectedInstruments.includes(instrument)}
+                      onChange={() => handleInstrumentChange(instrument)}
+                    />
+                    <Label htmlFor={instrument}>{instrument}</Label>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         <Button
           appearance="primary"
           onClick={handleSave}

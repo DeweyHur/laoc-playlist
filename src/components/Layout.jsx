@@ -21,6 +21,7 @@ import {
   SignOutRegular,
   ListRegular
 } from '@fluentui/react-icons'
+import { useAuth } from '../contexts/AuthContext'
 
 const useStyles = makeStyles({
   root: {
@@ -63,9 +64,10 @@ const useStyles = makeStyles({
   },
 })
 
-function Layout({ user, onLogout }) {
+function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
+  const { user, handleLogout } = useAuth()
 
   const renderProfileMenu = () => (
     <Menu>
@@ -88,7 +90,7 @@ function Layout({ user, onLogout }) {
           </MenuItem>
           <MenuItem 
             icon={<SignOutRegular />} 
-            onClick={onLogout}
+            onClick={handleLogout}
           >
             로그아웃
           </MenuItem>
@@ -124,7 +126,7 @@ function Layout({ user, onLogout }) {
           </MenuItem>
           <MenuItem 
             icon={<SignOutRegular />} 
-            onClick={onLogout}
+            onClick={handleLogout}
           >
             로그아웃
           </MenuItem>
