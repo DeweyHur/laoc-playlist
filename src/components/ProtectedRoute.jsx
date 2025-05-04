@@ -56,7 +56,6 @@ function ProtectedRoute({ children }) {
     handleKakaoLogin,
     handleEmailSignIn,
     handleSignUp,
-    handleAnonymousSignIn,
     handleLogout
   } = useAuth()
 
