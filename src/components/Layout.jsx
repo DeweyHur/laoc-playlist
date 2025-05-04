@@ -17,9 +17,12 @@ import {
   MoreHorizontalRegular,
   HomeRegular,
   SignOutRegular,
-  ListRegular
+  ListRegular,
+  ChatRegular
 } from '@fluentui/react-icons'
 import { useAuth } from '../contexts/AuthContext'
+import { useState } from 'react'
+import ChatDrawer from './ChatDrawer'
 
 const useStyles = makeStyles({
   root: {
@@ -66,6 +69,7 @@ function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
   const { user, handleLogout, handleKakaoLogin } = useAuth()
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const renderProfileMenu = () => (
     <Menu>
@@ -117,6 +121,12 @@ function Layout() {
             플레이리스트
           </MenuItem>
           <MenuItem 
+            icon={<ChatRegular />}
+            onClick={() => setIsChatOpen(true)}
+          >
+            채팅
+          </MenuItem>
+          <MenuItem 
             icon={<PersonRegular />}
             onClick={() => navigate('/profile')}
           >
@@ -149,6 +159,13 @@ function Layout() {
       >
         플레이리스트
       </Button>
+      <Button 
+        appearance="subtle" 
+        icon={<ChatRegular />}
+        onClick={() => setIsChatOpen(true)}
+      >
+        채팅
+      </Button>
     </div>
   )
 
@@ -169,9 +186,12 @@ function Layout() {
         </div>
       </header>
       {user ? (
-        <main className={styles.main}>
-          <Outlet />
-        </main>
+        <>
+          <main className={styles.main}>
+            <Outlet />
+          </main>
+          <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </>
       ) : null}
     </div>
   )
