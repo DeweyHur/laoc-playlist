@@ -22,19 +22,31 @@ function AuthCallback() {
           console.error('AuthCallback: OAuth error:', { error: errorParam, description: errorDescription })
           throw new Error(errorDescription || 'Authentication failed')
         }
+
+        // Get the OAuth provider and code from URL
+        const provider = urlParams.get('provider')
+        const code = urlParams.get('code')
         
-        // Let Supabase handle the OAuth callback
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('AuthCallback: Session check result:', { session, error: sessionError })
-        
-        if (sessionError) {
-          console.error('AuthCallback: Error getting session:', sessionError)
-          throw sessionError
+        if (!provider || !code) {
+          throw new Error('Missing OAuth parameters')
         }
-        
+
+        // Sign in with OAuth
+        const { data: { session }, error: signInError } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            queryParams: { code }
+          }
+        })
+
+        if (signInError) {
+          console.error('AuthCallback: Error signing in with OAuth:', signInError)
+          throw signInError
+        }
+
         if (!session) {
-          console.error('AuthCallback: No session found')
-          throw new Error('No session found')
+          console.error('AuthCallback: No session after OAuth sign in')
+          throw new Error('Failed to get session after OAuth sign in')
         }
 
         console.log('AuthCallback: Session found, user:', session.user)
