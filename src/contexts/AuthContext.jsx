@@ -15,15 +15,23 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session)
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('Initial session check:', { session, error })
+      if (error) {
+        console.error('Error getting session:', error)
+        setError(error.message)
+      }
       setUser(session?.user ?? null)
+      setLoading(false)
+    }).catch(error => {
+      console.error('Unexpected error getting session:', error)
+      setError(error.message)
       setLoading(false)
     })
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session)
+      console.log('Auth state changed:', { event: _event, session })
       setUser(session?.user ?? null)
     })
 

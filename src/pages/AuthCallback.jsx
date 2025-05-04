@@ -17,46 +17,54 @@ function AuthCallback() {
         const { data: { session }, error } = await supabase.auth.getSession()
         console.log('AuthCallback: Session check result:', { session, error })
         
-        if (error) throw error
+        if (error) {
+          console.error('AuthCallback: Error getting session:', error)
+          throw error
+        }
         
-        if (session) {
-          console.log('AuthCallback: Session found, user:', session.user)
-          
-          // Create user profile if it doesn't exist
-          const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          console.log('AuthCallback: Profile check result:', { profile, profileError })
-
-          if (!profile) {
-            console.log('AuthCallback: Creating new user profile...')
-            // Create new user profile
-            const { error: insertError } = await supabase
-              .from('user_profiles')
-              .insert([
-                {
-                  id: session.user.id,
-                  email: session.user.email,
-                  nickname: session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || 'Anonymous',
-                  instruments: []
-                }
-              ])
-
-            console.log('AuthCallback: Profile creation result:', { insertError })
-            if (insertError) throw insertError
-          }
-
-          navigate('/', { replace: true })
-        } else {
-          console.log('AuthCallback: No session found')
+        if (!session) {
+          console.error('AuthCallback: No session found')
           throw new Error('No session found')
         }
+
+        console.log('AuthCallback: Session found, user:', session.user)
+        
+        // Create user profile if it doesn't exist
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        console.log('AuthCallback: Profile check result:', { profile, profileError })
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('AuthCallback: Error checking profile:', profileError)
+          throw profileError
+        }
+
+        if (!profile) {
+          console.log('AuthCallback: Creating new user profile...')
+          // Create new user profile
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert([
+              {
+                id: session.user.id,
+                email: session.user.email,
+                nickname: session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || 'Anonymous',
+                instruments: []
+              }
+            ])
+
+          console.log('AuthCallback: Profile creation result:', { insertError })
+          if (insertError) throw insertError
+        }
+
+        navigate('/', { replace: true })
       } catch (error) {
         console.error('AuthCallback: Error in callback handling:', error.message)
-        setError('Failed to complete sign in. Please try again:', error.message)
+        setError('Failed to complete sign in. Please try again: ' + error.message)
         // Still navigate to home after a delay to show the error
         setTimeout(() => {
           navigate('/', { replace: true })
