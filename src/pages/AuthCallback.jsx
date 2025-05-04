@@ -12,6 +12,16 @@ function AuthCallback() {
       try {
         console.log('AuthCallback: Starting callback handling...')
         console.log('Current URL:', window.location.href)
+
+        // Check for error in URL parameters
+        const urlParams = new URLSearchParams(window.location.search)
+        const errorParam = urlParams.get('error')
+        const errorDescription = urlParams.get('error_description')
+        
+        if (errorParam) {
+          console.error('AuthCallback: OAuth error:', { error: errorParam, description: errorDescription })
+          throw new Error(errorDescription || 'Authentication failed')
+        }
         
         // Let Supabase handle the OAuth callback
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -65,7 +75,14 @@ function AuthCallback() {
       } catch (error) {
         console.error('AuthCallback: Error in callback handling:', error.message)
         setError('Failed to complete sign in. Please try again: ' + error.message)
-        // Still navigate to home after a delay to show the error
+        
+        // If it's a callback error, redirect to sign in
+        if (error.message.includes('callback is no longer runnable')) {
+          navigate('/signin', { replace: true })
+          return
+        }
+        
+        // For other errors, wait a bit before redirecting
         setTimeout(() => {
           navigate('/', { replace: true })
         }, 3000)
