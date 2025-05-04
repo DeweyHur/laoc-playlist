@@ -1,23 +1,64 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import {
+  Drawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
+  Button,
+  Input,
+  Badge,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
+import { DismissRegular } from '@fluentui/react-icons';
+
+const useStyles = makeStyles({
+  messageContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  messageSender: {
+    fontWeight: tokens.fontWeightSemibold,
+    marginRight: tokens.spacingHorizontalM,
+  },
+  messageMe: {
+    color: tokens.colorBrandForegroundInverted
+  },
+  messageText: {
+    marginRight: tokens.spacingHorizontalM,
+  },
+  messageTime: {
+    fontSize: tokens.fontSize200,
+    color: tokens.colorNeutralForeground3,
+    marginLeft: tokens.spacingHorizontalM,
+  }
+});
 
 const ChatDrawer = ({ isOpen, onClose }) => {
+  const styles = useStyles();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [hasUnread, setHasUnread] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
       fetchMessages();
       subscribeToMessages();
+      setHasUnread(false);
     }
   }, [isOpen]);
 
   const fetchMessages = async () => {
     const { data, error } = await supabase
       .from('messages')
-      .select('*')
+      .select(`
+        *,
+        user:user_profiles(nickname)
+      `)
       .order('created_at', { ascending: true })
       .limit(50);
 
@@ -37,7 +78,27 @@ const ChatDrawer = ({ isOpen, onClose }) => {
         schema: 'public',
         table: 'messages',
       }, (payload) => {
-        setMessages((current) => [...current, payload.new]);
+        // Fetch the complete message with user profile
+        supabase
+          .from('messages')
+          .select(`
+            *,
+            user:user_profiles(nickname)
+          `)
+          .eq('id', payload.new.id)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              if (isOpen) {
+                // If drawer is open, refresh all messages
+                fetchMessages();
+              } else {
+                // If drawer is closed, just add the new message and show notification
+                setMessages((current) => [...current, data]);
+                setHasUnread(true);
+              }
+            }
+          });
       })
       .subscribe();
 
@@ -50,80 +111,114 @@ const ChatDrawer = ({ isOpen, onClose }) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
-    const { error } = await supabase.from('messages').insert([
-      {
-        content: newMessage,
-        user_id: user.id,
-        channel: 'global',
-      },
-    ]);
+    try {
+      // First check if user profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
+      if (profileError && profileError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert([{
+            id: user.id,
+            email: user.email,
+            nickname: user.user_metadata?.name || 'Anonymous'
+          }]);
+
+        if (insertError) throw insertError;
+      } else if (profileError) {
+        throw profileError;
+      }
+
+      // Now send the message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([{
+          content: newMessage,
+          user_id: user.id,
+          channel: 'global',
+        }]);
+
+      if (messageError) throw messageError;
+
+      setNewMessage('');
+    } catch (error) {
       console.error('Error sending message:', error);
-      return;
     }
-
-    setNewMessage('');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out">
-      <div className="h-full flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Global Chat</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
+    <Drawer
+      open={isOpen}
+      onOpenChange={(e, data) => onClose()}
+      position="end"
+      size="medium"
+    >
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<DismissRegular />}
+              onClick={onClose}
+            />
+          }
+        >
+          <div className="relative">
+            채팅
+            {hasUnread && (
+              <Badge color="danger" className="absolute -top-1 -right-2" />
+            )}
+          </div>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <DrawerBody>
+        <div className="flex-1 overflow-y-auto space-y-2">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${
-                message.user_id === user?.id ? 'justify-end' : 'justify-start'
+              className={`text-sm ${
+                message.user_id === user?.id ? 'text-right' : 'text-left'
               }`}
             >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.user_id === user?.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100'
-                }`}
-              >
-                <p className="text-sm">{message.content}</p>
-                <p className="text-xs mt-1 opacity-70">
-                  {new Date(message.created_at).toLocaleTimeString()}
-                </p>
-              </div>
+              <span className={`${styles.messageSender} ${message.user_id === user?.id ? styles.messageMe : ''}`}>
+                {message.user?.nickname || 'Anonymous'}
+              </span>
+              <span className={`${styles.messageText}`}>
+                {message.content}
+              </span>
+              <sub className={`${styles.messageTime}`}>
+                {new Date(message.created_at).toLocaleTimeString()}
+              </sub>
             </div>
           ))}
         </div>
+      </DrawerBody>
 
-        <form onSubmit={handleSendMessage} className="p-4 border-t">
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Send
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <form onSubmit={handleSendMessage} className="p-4 border-t">
+        <div className="flex space-x-2">
+          <Input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            appearance="primary"
+          >
+            Send
+          </Button>
+        </div>
+      </form>
+    </Drawer>
   );
 };
 

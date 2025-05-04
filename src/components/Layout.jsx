@@ -11,6 +11,8 @@ import {
   MenuItem,
   Button,
   Avatar,
+  FluentProvider,
+  webDarkTheme,
 } from '@fluentui/react-components'
 import { 
   PersonRegular,
@@ -29,6 +31,8 @@ const useStyles = makeStyles({
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
   },
   header: {
     display: 'flex',
@@ -162,7 +166,7 @@ function Layout() {
       <Button 
         appearance="subtle" 
         icon={<ChatRegular />}
-        onClick={() => setIsChatOpen(true)}
+        onClick={() => setIsChatOpen(!isChatOpen)}
       >
         채팅
       </Button>
@@ -170,30 +174,32 @@ function Layout() {
   )
 
   return (
-    <div className={styles.root}>
-      <header className={styles.header}>
-        <Title3>🎵 밴드방 유튜브 플레이리스트</Title3>
-        <div className={styles.navContainer}>
-          {renderDesktopMenu()}
-          {user ? renderProfileMenu() : (
-            <Button appearance="primary" onClick={handleKakaoLogin}>
-              카카오 로그인
-            </Button>
-          )}
-          <div className={styles.mobileMenu}>
-            {renderMobileMenu()}
+    <FluentProvider theme={webDarkTheme}>
+      <div className={styles.root}>
+        <header className={styles.header}>
+          <Title3>🎵 밴드방 유튜브 플레이리스트</Title3>
+          <div className={styles.navContainer}>
+            {renderDesktopMenu()}
+            {user ? renderProfileMenu() : (
+              <Button appearance="primary" onClick={handleKakaoLogin}>
+                카카오 로그인
+              </Button>
+            )}
+            <div className={styles.mobileMenu}>
+              {renderMobileMenu()}
+            </div>
           </div>
-        </div>
-      </header>
-      {user ? (
-        <>
-          <main className={styles.main}>
-            <Outlet />
-          </main>
-          <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-        </>
-      ) : null}
-    </div>
+        </header>
+        {user ? (
+          <>
+            <main className={styles.main}>
+              <Outlet />
+            </main>
+            <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+          </>
+        ) : null}
+      </div>
+    </FluentProvider>
   )
 }
 
