@@ -22,6 +22,7 @@ BEGIN
     new.raw_user_meta_data->>'full_name',
     COALESCE(
       new.raw_user_meta_data->>'nickname',
+      new.raw_user_meta_data->>'full_name',
       'Anonymous'
     )
   );
@@ -29,7 +30,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update existing records to have a default nickname if null
+-- Update existing records to use full_name as nickname if nickname is null
 UPDATE public.user_profiles 
-SET nickname = 'Anonymous' 
+SET nickname = COALESCE(full_name, 'Anonymous')
 WHERE nickname IS NULL; 
