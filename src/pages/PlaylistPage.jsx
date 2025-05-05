@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePlaylist } from '../contexts/PlaylistContext'
 import CreatePlaylistDrawer from '../components/CreatePlaylistDrawer'
 import PlaylistCard from '../components/PlaylistCard'
+import { extractVideoId } from '../lib/youtubeUtils'
 
 const useStyles = makeStyles({
   container: {
@@ -184,7 +185,7 @@ function PlaylistPage() {
 
   const initializePlayer = () => {
     if (playerRef.current && playlists[0]?.playlist_videos?.[currentVideoIndex]) {
-      const videoId = getVideoId(playlists[0].playlist_videos[currentVideoIndex].youtube_url)
+      const videoId = extractVideoId(playlists[0].playlist_videos[currentVideoIndex].youtube_url)
       if (videoId) {
         if (playerInstanceRef.current) {
           playerInstanceRef.current.destroy()
@@ -222,42 +223,8 @@ function PlaylistPage() {
         } catch (error) {
           console.error('Error initializing YouTube player:', error)
         }
-        playerInstanceRef.current = new window.YT.Player(playerRef.current, {
-          height: '180',
-          width: '320',
-          videoId,
-          playerVars: {
-            autoplay: isPlaying ? 1 : 0,
-            controls: 0,
-            modestbranding: 1,
-            rel: 0,
-          },
-          events: {
-            onReady: (event) => {
-              if (isPlaying) {
-                event.target.playVideo()
-              }
-            },
-            onStateChange: handlePlayerStateChange,
-            onError: (event) => {
-              console.error('YouTube Player Error:', event.data)
-              // Try to play next video if there's an error
-              const nextIndex = currentVideoIndex + 1
-              if (nextIndex < playlists[0]?.playlist_videos?.length) {
-                setCurrentVideoIndex(nextIndex)
-              }
-            },
-          },
-        })
       }
     }
-  }
-
-  const getVideoId = (url) => {
-    if (!url) return null
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-    const match = url.match(regExp)
-    return match && match[2].length === 11 ? match[2] : null
   }
 
   const handlePlayerStateChange = (event) => {

@@ -17,6 +17,7 @@ import {
 import { DismissRegular } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 import youtube from '../lib/youtube'
+import { extractVideoId, formatDuration } from '../lib/youtubeUtils'
 
 const useStyles = makeStyles({
   form: {
@@ -50,7 +51,7 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
     try {
       setIsAdding(true)
       setError(null)
-      
+
       if (!youtubeUrl.trim()) {
         throw new Error('YouTube URL is required')
       }
@@ -71,20 +72,6 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
       const videoData = response.items[0].snippet
       const contentDetails = response.items[0].contentDetails
 
-      // Format duration from ISO 8601 to human readable format
-      const formatDuration = (duration) => {
-        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
-        const hours = (match[1] || '').replace('H', '')
-        const minutes = (match[2] || '').replace('M', '')
-        const seconds = (match[3] || '').replace('S', '')
-        
-        let result = ''
-        if (hours) result += `${hours}:`
-        result += `${minutes.padStart(2, '0')}:`
-        result += seconds.padStart(2, '0')
-        return result
-      }
-
       // Get the current highest order value
       const { data: existingVideos, error: fetchError } = await supabase
         .from('playlist_videos')
@@ -95,8 +82,8 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
 
       if (fetchError) throw fetchError
 
-      const nextOrder = existingVideos && existingVideos.length > 0 
-        ? existingVideos[0].order + 1 
+      const nextOrder = existingVideos && existingVideos.length > 0
+        ? existingVideos[0].order + 1
         : 0
 
       // Add video to playlist with metadata
@@ -131,15 +118,19 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
 
   const extractVideoId = (url) => {
     if (!url) return null
-    
+
     // Handle traditional format: https://www.youtube.com/watch?v=VIDEO_ID
-    let match = url.match(/v=([^&]+)/)
+    let match = url.match(/[?&]v=([^&]+)/)
     if (match) return match[1]
-    
-    // Handle new format: https://youtu.be/VIDEO_ID?feature=shared
-    match = url.match(/youtu\.be\/([^?]+)/)
+
+    // Handle new format: https://youtu.be/VIDEO_ID
+    match = url.match(/youtu\.be\/([^?&]+)/)
     if (match) return match[1]
-    
+
+    // Handle embed format: https://www.youtube.com/embed/VIDEO_ID
+    match = url.match(/embed\/([^?&]+)/)
+    if (match) return match[1]
+
     return null
   }
 
@@ -195,8 +186,8 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
         <Button appearance="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button 
-          appearance="primary" 
+        <Button
+          appearance="primary"
           onClick={handleAdd}
           disabled={isAdding}
         >

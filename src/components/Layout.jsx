@@ -15,7 +15,7 @@ import {
   webDarkTheme,
   Badge,
 } from '@fluentui/react-components'
-import { 
+import {
   PersonRegular,
   MoreHorizontalRegular,
   HomeRegular,
@@ -23,6 +23,7 @@ import {
   ListRegular,
   ChatRegular,
   VideoRegular,
+  PlayRegular,
 } from '@fluentui/react-icons'
 import { useAuth } from '../contexts/AuthContext'
 import { useChat } from '../contexts/ChatContext'
@@ -81,8 +82,8 @@ function Layout() {
     <Menu>
       <MenuTrigger>
         <Button appearance="subtle" className={styles.profileMenu}>
-          <Avatar 
-            name={userProfile?.nickname || 'User'} 
+          <Avatar
+            name={userProfile?.nickname || 'User'}
             size={32}
           />
           <Text>{userProfile?.nickname || 'User'}</Text>
@@ -90,22 +91,22 @@ function Layout() {
       </MenuTrigger>
       <MenuPopover>
         <MenuList>
-          <MenuItem 
+          <MenuItem
             icon={<PersonRegular />}
             onClick={() => navigate('/profile')}
           >
             프로필
           </MenuItem>
           {(isAdmin() || isDevelopment) && (
-            <MenuItem 
-              icon={<VideoRegular />}
-              onClick={() => navigate('/regular-performance')}
+            <MenuItem
+              icon={<ListRegular />}
+              onClick={() => navigate('/regular-performance/admin')}
             >
-              정모 공연
+              정모 플레이리스트 관리
             </MenuItem>
           )}
-          <MenuItem 
-            icon={<SignOutRegular />} 
+          <MenuItem
+            icon={<SignOutRegular />}
             onClick={handleLogout}
           >
             로그아웃
@@ -122,19 +123,19 @@ function Layout() {
       </MenuTrigger>
       <MenuPopover>
         <MenuList>
-          <MenuItem 
+          <MenuItem
             icon={<HomeRegular />}
             onClick={() => navigate('/')}
           >
             홈
           </MenuItem>
-          <MenuItem 
+          <MenuItem
             icon={<ListRegular />}
             onClick={() => navigate('/playlist')}
           >
             플레이리스트
           </MenuItem>
-          <MenuItem 
+          <MenuItem
             icon={<ChatRegular />}
             onClick={toggleChat}
           >
@@ -143,22 +144,28 @@ function Layout() {
               <Badge color="danger" className="ml-2" />
             )}
           </MenuItem>
-          {isAdmin() && (
-            <MenuItem 
-              icon={<VideoRegular />}
-              onClick={() => navigate('/regular-performance')}
-            >
-              정모 공연
-            </MenuItem>
-          )}
-          <MenuItem 
+          <MenuItem
+            icon={<VideoRegular />}
+            onClick={() => navigate('/regular-performance')}
+          >
+            정모 공연
+          </MenuItem>
+          <MenuItem
             icon={<PersonRegular />}
             onClick={() => navigate('/profile')}
           >
             프로필
           </MenuItem>
-          <MenuItem 
-            icon={<SignOutRegular />} 
+          {(isAdmin() || isDevelopment) && (
+            <MenuItem
+              icon={<ListRegular />}
+              onClick={() => navigate('/regular-performance/admin')}
+            >
+              정모 플레이리스트 관리
+            </MenuItem>
+          )}
+          <MenuItem
+            icon={<SignOutRegular />}
             onClick={handleLogout}
           >
             로그아웃
@@ -170,22 +177,22 @@ function Layout() {
 
   const renderDesktopMenu = () => (
     <div className={styles.desktopMenu}>
-      <Button 
-        appearance="subtle" 
+      <Button
+        appearance="subtle"
         icon={<HomeRegular />}
         onClick={() => navigate('/')}
       >
         홈
       </Button>
-      <Button 
-        appearance="subtle" 
+      <Button
+        appearance="subtle"
         icon={<ListRegular />}
         onClick={() => navigate('/playlist')}
       >
         플레이리스트
       </Button>
-      <Button 
-        appearance="subtle" 
+      <Button
+        appearance="subtle"
         icon={<ChatRegular />}
         onClick={toggleChat}
       >
@@ -194,15 +201,13 @@ function Layout() {
           <Badge color="danger" className="ml-2" />
         )}
       </Button>
-      {isAdmin() && (
-        <Button 
-          appearance="subtle" 
-          icon={<VideoRegular />}
-          onClick={() => navigate('/regular-performance')}
-        >
-          정모 공연
-        </Button>
-      )}
+      <Button
+        appearance="subtle"
+        icon={<VideoRegular />}
+        onClick={() => navigate('/regular-performance')}
+      >
+        정모 공연
+      </Button>
     </div>
   )
 
