@@ -35,34 +35,29 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const isAdmin = () => {
+    return userProfile?.role === 'admin'
+  }
+
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('Initial session check:', { session, error })
-      if (error) {
-        console.error('Error getting session:', error)
-        setError(error.message)
-      }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchUserProfile(session.user.id)
       }
       setLoading(false)
-    }).catch(error => {
-      console.error('Unexpected error getting session:', error)
-      setError(error.message)
-      setLoading(false)
     })
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', { event: _event, session })
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchUserProfile(session.user.id)
       } else {
         setUserProfile(null)
       }
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -134,12 +129,14 @@ export function AuthProvider({ children }) {
     password,
     setPassword,
     error,
+    setError,
     isDevelopment,
     handleKakaoLogin,
     handleEmailSignIn,
     handleSignUp,
     handleLogout,
-    refreshUserProfile
+    refreshUserProfile,
+    isAdmin,
   }
 
   return (

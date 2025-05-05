@@ -3,6 +3,7 @@ import { FluentProvider, webLightTheme } from '@fluentui/react-components'
 import HomePage from './pages/HomePage'
 import PlaylistPage from './pages/PlaylistPage'
 import EditPlaylistPage from './pages/EditPlaylistPage'
+import RegularPerformancePage from './pages/RegularPerformancePage'
 import Layout from './components/Layout'
 import ProfilePage from './pages/ProfilePage'
 import { AuthProvider } from './contexts/AuthContext'
@@ -30,6 +31,7 @@ function App() {
                   <Route path="/playlist/:id" element={<PlaylistPage />} />
                   <Route path="/playlist/:id/edit" element={<EditPlaylistPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/regular-performance" element={<RegularPerformancePage />} />
                 </Route>
               </Routes>
             </Router>

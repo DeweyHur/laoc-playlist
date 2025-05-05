@@ -21,7 +21,8 @@ import {
   HomeRegular,
   SignOutRegular,
   ListRegular,
-  ChatRegular
+  ChatRegular,
+  VideoRegular,
 } from '@fluentui/react-icons'
 import { useAuth } from '../contexts/AuthContext'
 import { useChat } from '../contexts/ChatContext'
@@ -73,7 +74,7 @@ const useStyles = makeStyles({
 function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
-  const { user, userProfile, handleLogout, handleKakaoLogin } = useAuth()
+  const { user, userProfile, handleLogout, handleKakaoLogin, isAdmin, isDevelopment } = useAuth()
   const { isOpen, hasUnread, toggleChat, closeChat } = useChat()
 
   const renderProfileMenu = () => (
@@ -95,6 +96,14 @@ function Layout() {
           >
             프로필
           </MenuItem>
+          {(isAdmin() || isDevelopment) && (
+            <MenuItem 
+              icon={<VideoRegular />}
+              onClick={() => navigate('/regular-performance')}
+            >
+              정모 공연
+            </MenuItem>
+          )}
           <MenuItem 
             icon={<SignOutRegular />} 
             onClick={handleLogout}
@@ -134,6 +143,14 @@ function Layout() {
               <Badge color="danger" className="ml-2" />
             )}
           </MenuItem>
+          {isAdmin() && (
+            <MenuItem 
+              icon={<VideoRegular />}
+              onClick={() => navigate('/regular-performance')}
+            >
+              정모 공연
+            </MenuItem>
+          )}
           <MenuItem 
             icon={<PersonRegular />}
             onClick={() => navigate('/profile')}
@@ -177,6 +194,15 @@ function Layout() {
           <Badge color="danger" className="ml-2" />
         )}
       </Button>
+      {isAdmin() && (
+        <Button 
+          appearance="subtle" 
+          icon={<VideoRegular />}
+          onClick={() => navigate('/regular-performance')}
+        >
+          정모 공연
+        </Button>
+      )}
     </div>
   )
 
