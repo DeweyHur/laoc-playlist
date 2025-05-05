@@ -153,19 +153,32 @@ function PlaylistPage() {
   }, [id])
 
   useEffect(() => {
-    // Initialize YouTube Player API
+    // Load YouTube IFrame API if not already loaded
     if (!window.YT) {
-      // If YT is not loaded yet, create a global callback
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
       window.onYouTubeIframeAPIReady = initializePlayer
     } else {
-      // If YT is already loaded, initialize immediately
       initializePlayer()
     }
 
     return () => {
       if (playerInstanceRef.current) {
-        playerInstanceRef.current.destroy()
+        try {
+          playerInstanceRef.current.destroy()
+        } catch (error) {
+          console.error('Error destroying player:', error)
+        }
       }
+    }
+  }, []) // Only run once on mount
+
+  // Separate useEffect for handling video changes
+  useEffect(() => {
+    if (window.YT && window.YT.Player) {
+      initializePlayer()
     }
   }, [currentVideoIndex, playlists])
 
@@ -175,6 +188,39 @@ function PlaylistPage() {
       if (videoId) {
         if (playerInstanceRef.current) {
           playerInstanceRef.current.destroy()
+        }
+        try {
+          playerInstanceRef.current = new window.YT.Player(playerRef.current, {
+            height: '180',
+            width: '320',
+            videoId,
+            playerVars: {
+              autoplay: isPlaying ? 1 : 0,
+              controls: 1, // Enable native YouTube controls
+              modestbranding: 1,
+              rel: 0,
+              fs: 0, // Disable fullscreen
+              playsinline: 1
+            },
+            events: {
+              onReady: (event) => {
+                if (isPlaying) {
+                  event.target.playVideo()
+                }
+              },
+              onStateChange: handlePlayerStateChange,
+              onError: (event) => {
+                console.error('YouTube Player Error:', event.data)
+                // Try to play next video if there's an error
+                const nextIndex = currentVideoIndex + 1
+                if (nextIndex < playlists[0]?.playlist_videos?.length) {
+                  setCurrentVideoIndex(nextIndex)
+                }
+              },
+            },
+          })
+        } catch (error) {
+          console.error('Error initializing YouTube player:', error)
         }
         playerInstanceRef.current = new window.YT.Player(playerRef.current, {
           height: '180',
