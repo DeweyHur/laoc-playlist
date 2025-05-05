@@ -85,6 +85,20 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
         return result
       }
 
+      // Get the current highest order value
+      const { data: existingVideos, error: fetchError } = await supabase
+        .from('playlist_videos')
+        .select('order')
+        .eq('playlist_id', playlistId)
+        .order('order', { ascending: false })
+        .limit(1)
+
+      if (fetchError) throw fetchError
+
+      const nextOrder = existingVideos && existingVideos.length > 0 
+        ? existingVideos[0].order + 1 
+        : 0
+
       // Add video to playlist with metadata
       const { data, error } = await supabase
         .from('playlist_videos')
@@ -95,7 +109,8 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
             title: videoData.title,
             channel_title: videoData.channelTitle,
             thumbnail_url: videoData.thumbnails.high.url,
-            duration: formatDuration(contentDetails.duration)
+            duration: formatDuration(contentDetails.duration),
+            order: nextOrder
           }
         ])
         .select()
@@ -103,12 +118,9 @@ function AddVideoDrawer({ isOpen, onClose, playlistId, onVideoAdded }) {
 
       if (error) throw error
 
-      // Reset form and close drawer
-      setYoutubeUrl('')
+      onVideoAdded(data)
       onClose()
-      if (onVideoAdded) {
-        onVideoAdded(data)
-      }
+      setYoutubeUrl('')
     } catch (error) {
       console.error('Error adding video:', error.message)
       setError(error.message)
