@@ -73,7 +73,7 @@ const useStyles = makeStyles({
 function Layout() {
   const styles = useStyles()
   const navigate = useNavigate()
-  const { user, handleLogout, handleKakaoLogin } = useAuth()
+  const { user, userProfile, handleLogout, handleKakaoLogin } = useAuth()
   const { isOpen, hasUnread, toggleChat, closeChat } = useChat()
 
   const renderProfileMenu = () => (
@@ -81,10 +81,10 @@ function Layout() {
       <MenuTrigger>
         <Button appearance="subtle" className={styles.profileMenu}>
           <Avatar 
-            name={user?.user_metadata?.name || 'User'} 
+            name={userProfile?.nickname || 'User'} 
             size={32}
           />
-          <Text>{user?.user_metadata?.name || 'User'}</Text>
+          <Text>{userProfile?.nickname || 'User'}</Text>
         </Button>
       </MenuTrigger>
       <MenuPopover>
