@@ -5,6 +5,7 @@ const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -12,6 +13,27 @@ export function AuthProvider({ children }) {
 
   const isDevelopment = import.meta.env.DEV
   console.log('isDevelopment:', isDevelopment)
+
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      setUserProfile(data)
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
+
+  const refreshUserProfile = async () => {
+    if (user) {
+      await fetchUserProfile(user.id)
+    }
+  }
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -22,6 +44,9 @@ export function AuthProvider({ children }) {
         setError(error.message)
       }
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      }
       setLoading(false)
     }).catch(error => {
       console.error('Unexpected error getting session:', error)
@@ -33,6 +58,11 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log('Auth state changed:', { event: _event, session })
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setUserProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -97,6 +127,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    userProfile,
     loading,
     email,
     setEmail,
@@ -107,7 +138,8 @@ export function AuthProvider({ children }) {
     handleKakaoLogin,
     handleEmailSignIn,
     handleSignUp,
-    handleLogout
+    handleLogout,
+    refreshUserProfile
   }
 
   return (

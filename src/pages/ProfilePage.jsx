@@ -17,6 +17,7 @@ import {
   TableBody,
   TableCell,
   TableSelectionCell,
+  Input,
 } from '@fluentui/react-components'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -48,11 +49,12 @@ const INSTRUMENTS = ['Singer', 'Piano', 'Guitar', 'Bass', 'Drum', 'Violin']
 
 function ProfilePage() {
   const styles = useStyles()
-  const { user } = useAuth()
+  const { user, refreshUserProfile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState(null)
   const [selectedInstruments, setSelectedInstruments] = useState([])
+  const [nickname, setNickname] = useState('')
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -72,6 +74,7 @@ function ProfilePage() {
 
       setProfile(data)
       setSelectedInstruments(data.instruments || [])
+      setNickname(data.nickname || '')
     } catch (error) {
       console.error('Error fetching profile:', error.message)
       setError('Failed to load profile. Please try again later.')
@@ -96,10 +99,18 @@ function ProfilePage() {
     try {
       const { error } = await supabase
         .from('user_profiles')
-        .update({ instruments: selectedInstruments })
+        .update({ 
+          instruments: selectedInstruments,
+          nickname: nickname.trim() || 'Anonymous'
+        })
         .eq('id', user.id)
 
       if (error) throw error
+
+      // Refresh the profile in AuthContext
+      await refreshUserProfile()
+      // Also refresh local profile data
+      await fetchProfile()
     } catch (error) {
       console.error('Error updating profile:', error.message)
       setError('Failed to save changes. Please try again later.')
@@ -137,6 +148,16 @@ function ProfilePage() {
             <TableRow>
               <TableCell>Email</TableCell>
               <TableCell>{user.email}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Nickname</TableCell>
+              <TableCell>
+                <Input
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="Enter your nickname"
+                />
+              </TableCell>
             </TableRow>
             <TableRow>
               <TableCell>User ID</TableCell>
