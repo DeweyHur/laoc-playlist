@@ -13,12 +13,17 @@ import {
   CardHeader,
   CardPreview,
   CardFooter,
+  Input,
+  Textarea,
 } from '@fluentui/react-components'
 import { 
   EditRegular,
   PlayRegular,
   AddRegular,
   PauseRegular,
+  SaveRegular,
+  DismissRegular,
+  SparkleRegular,
 } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -137,6 +142,8 @@ function PlaylistPage() {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedPlaylist, setEditedPlaylist] = useState(null)
   const playerRef = useRef(null)
   const playerInstanceRef = useRef(null)
 
@@ -308,6 +315,88 @@ function PlaylistPage() {
     setPlaylists([newPlaylist, ...playlists])
   }
 
+  const generateKoreanName = () => {
+    const prefixes = [
+      '불타는', '폭발하는', '전설의', '꿈꾸는', '날아가는', '빛나는', '달리는', '춤추는', '노래하는', '웃는',
+      '미친', '미치도록', '완전', '완벽한', '최고의', '최강의', '최고급', '최상의', '최고의', '최고급',
+      '매력적인', '매혹적인', '환상적인', '환상의', '환상적인', '환상의', '환상적인', '환상의', '환상적인', '환상의'
+    ]
+    
+    const nouns = [
+      '비트', '리듬', '멜로디', '하모니', '음악', '노래', '음악회', '콘서트', '공연', '음악여행',
+      '파티', '축제', '축하', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의',
+      '무대', '무대의', '무대에서', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의'
+    ]
+    
+    const suffixes = [
+      '파티', '축제', '축하', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의',
+      '무대', '무대의', '무대에서', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의',
+      '쇼', '쇼의', '쇼에서', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의'
+    ]
+    
+    const emojis = ['🔥', '✨', '💫', '🌟', '⭐', '🎵', '🎶', '🎸', '🎹', '🎺', '🎻', '🥁', '🎤', '🎧', '🎼']
+    
+    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)]
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
+    const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)]
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
+    
+    // Sometimes add a second emoji
+    const secondEmoji = Math.random() > 0.5 ? emojis[Math.floor(Math.random() * emojis.length)] : ''
+    
+    // Sometimes add a third word
+    const thirdWord = Math.random() > 0.7 ? ` ${nouns[Math.floor(Math.random() * nouns.length)]}` : ''
+    
+    return `${randomEmoji} ${randomPrefix} ${randomNoun}${thirdWord} ${randomSuffix} ${secondEmoji}`
+  }
+
+  const handleEdit = () => {
+    if (playlists[0]) {
+      setEditedPlaylist({
+        title: playlists[0].title,
+        description: playlists[0].description || '',
+      })
+      setIsEditing(true)
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('playlists')
+        .update({
+          title: editedPlaylist.title,
+          description: editedPlaylist.description,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setPlaylists([data])
+      setIsEditing(false)
+      setEditedPlaylist(null)
+    } catch (error) {
+      console.error('Error updating playlist:', error.message)
+      setError(error.message)
+    }
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setEditedPlaylist(null)
+  }
+
+  const handleGenerateName = () => {
+    if (editedPlaylist) {
+      setEditedPlaylist(prev => ({
+        ...prev,
+        title: generateKoreanName()
+      }))
+    }
+  }
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -352,20 +441,66 @@ function PlaylistPage() {
         playlists.map(playlist => (
           <div key={playlist.id}>
             <div className={styles.header}>
-              <Title3>{playlist.title}</Title3>
+              {isEditing ? (
+                <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flex: 1 }}>
+                  <Input
+                    value={editedPlaylist.title}
+                    onChange={(e) => setEditedPlaylist(prev => ({ ...prev, title: e.target.value }))}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    appearance="subtle"
+                    icon={<SparkleRegular />}
+                    onClick={handleGenerateName}
+                    title="Generate Korean Name"
+                  />
+                </div>
+              ) : (
+                <Title3>{playlist.title}</Title3>
+              )}
               {playlist.user_id === user.id && (
-                <Button 
-                  appearance="primary" 
-                  icon={<EditRegular />}
-                  onClick={() => navigate(`/playlist/${playlist.id}/edit`)}
-                >
-                  Edit Playlist
-                </Button>
+                <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+                  {isEditing ? (
+                    <>
+                      <Button 
+                        appearance="primary" 
+                        icon={<SaveRegular />}
+                        onClick={handleSave}
+                      >
+                        Save
+                      </Button>
+                      <Button 
+                        appearance="secondary" 
+                        icon={<DismissRegular />}
+                        onClick={handleCancel}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      appearance="primary" 
+                      icon={<EditRegular />}
+                      onClick={handleEdit}
+                    >
+                      Edit Playlist
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
-            {playlist.description && (
-              <Text className={styles.description}>{playlist.description}</Text>
+            {isEditing ? (
+              <Textarea
+                value={editedPlaylist.description}
+                onChange={(e) => setEditedPlaylist(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter playlist description"
+                style={{ marginBottom: tokens.spacingVerticalL }}
+              />
+            ) : (
+              playlist.description && (
+                <Text className={styles.description}>{playlist.description}</Text>
+              )
             )}
 
             <div className={styles.videoGrid}>
