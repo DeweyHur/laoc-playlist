@@ -32,6 +32,7 @@ import {
 } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import PlaylistCard from '../components/PlaylistCard'
 
 const useStyles = makeStyles({
   container: {
@@ -146,9 +147,6 @@ function HomePage() {
   const [allVideos, setAllVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null)
-  const [newComment, setNewComment] = useState('')
-  const [comments, setComments] = useState({})
 
   useEffect(() => {
     fetchData()
@@ -235,122 +233,6 @@ function HomePage() {
     }
   }
 
-  const handleLike = async (playlistId) => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    try {
-      const playlist = recentPlaylists.find(p => p.id === playlistId)
-      if (playlist.isLiked) {
-        // Unlike
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('playlist_id', playlistId)
-          .eq('user_id', user.id)
-
-        if (error) throw error
-
-        setRecentPlaylists(prev => prev.map(p => 
-          p.id === playlistId 
-            ? { ...p, isLiked: false, likes_count: p.likes_count - 1 }
-            : p
-        ))
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('likes')
-          .insert([{ playlist_id: playlistId, user_id: user.id }])
-
-        if (error) throw error
-
-        setRecentPlaylists(prev => prev.map(p => 
-          p.id === playlistId 
-            ? { ...p, isLiked: true, likes_count: p.likes_count + 1 }
-            : p
-        ))
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error.message)
-      setError(error.message)
-    }
-  }
-
-  const handleComment = async (playlistId) => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    if (!newComment.trim()) return
-
-    try {
-      const { error } = await supabase
-        .from('comments')
-        .insert([{
-          playlist_id: playlistId,
-          user_id: user.id,
-          content: newComment.trim()
-        }])
-
-      if (error) throw error
-
-      // Fetch updated comments
-      const { data: updatedComments, error: commentsError } = await supabase
-        .from('comments')
-        .select(`
-          *,
-          user:user_profiles(nickname)
-        `)
-        .eq('playlist_id', playlistId)
-        .order('created_at', { ascending: false })
-
-      if (commentsError) throw commentsError
-
-      setComments(prev => ({
-        ...prev,
-        [playlistId]: updatedComments
-      }))
-
-      // Update comments count
-      setRecentPlaylists(prev => prev.map(p => 
-        p.id === playlistId 
-          ? { ...p, comments_count: p.comments_count + 1 }
-          : p
-      ))
-
-      setNewComment('')
-    } catch (error) {
-      console.error('Error adding comment:', error.message)
-      setError(error.message)
-    }
-  }
-
-  const fetchComments = async (playlistId) => {
-    try {
-      const { data, error } = await supabase
-        .from('comments')
-        .select(`
-          *,
-          user:user_profiles(nickname)
-        `)
-        .eq('playlist_id', playlistId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      setComments(prev => ({
-        ...prev,
-        [playlistId]: data
-      }))
-    } catch (error) {
-      console.error('Error fetching comments:', error.message)
-      setError(error.message)
-    }
-  }
-
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -374,100 +256,10 @@ function HomePage() {
 
         <div className={styles.playlistGrid}>
           {recentPlaylists.map((playlist) => (
-            <Card key={playlist.id} className={styles.videoCard}>
-              <div className={styles.cardHeader}>
-                <h3>{playlist.title}</h3>
-                <p>{playlist.description || 'No description'}</p>
-                <Text className={styles.channelInfo}>
-                  Created by {playlist.user_profile?.nickname || 'Anonymous'}
-                </Text>
-              </div>
-              <CardPreview>
-                {playlist.playlist_videos?.[0]?.thumbnail_url && (
-                  <img
-                    src={playlist.playlist_videos[0].thumbnail_url}
-                    alt={playlist.title}
-                    className={styles.thumbnail}
-                  />
-                )}
-              </CardPreview>
-              <CardFooter>
-                <div className={styles.actionButtons}>
-                  <Button
-                    appearance="primary"
-                    icon={<PlayRegular />}
-                    onClick={() => navigate(`/playlist/${playlist.id}`)}
-                  >
-                    View Playlist
-                  </Button>
-                  <Button
-                    appearance="subtle"
-                    icon={playlist.isLiked ? <HeartFilled /> : <HeartRegular />}
-                    onClick={() => handleLike(playlist.id)}
-                    className={styles.likeButton}
-                  >
-                    {playlist.likes_count}
-                  </Button>
-                  <Dialog>
-                    <DialogTrigger>
-                      <Button
-                        appearance="subtle"
-                        icon={<ChatRegular />}
-                        className={styles.commentButton}
-                        onClick={() => {
-                          setSelectedPlaylist(playlist)
-                          fetchComments(playlist.id)
-                        }}
-                      >
-                        {playlist.comments_count}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogSurface>
-                      <DialogBody>
-                        <DialogTitle>Comments</DialogTitle>
-                        <DialogContent>
-                          <div className={styles.commentSection}>
-                            <Textarea
-                              placeholder="Write a comment..."
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              className={styles.commentInput}
-                            />
-                            <Button
-                              appearance="primary"
-                              onClick={() => handleComment(playlist.id)}
-                              disabled={!newComment.trim()}
-                            >
-                              Post Comment
-                            </Button>
-                            <div className={styles.commentList}>
-                              {comments[playlist.id]?.map((comment) => (
-                                <div key={comment.id} className={styles.comment}>
-                                  <div className={styles.commentHeader}>
-                                    <Text className={styles.commentAuthor}>
-                                      {comment.user?.nickname || 'Anonymous'}
-                                    </Text>
-                                    <Text className={styles.commentAuthor}>
-                                      {new Date(comment.created_at).toLocaleDateString()}
-                                    </Text>
-                                  </div>
-                                  <Text className={styles.commentContent}>
-                                    {comment.content}
-                                  </Text>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </DialogBody>
-                    </DialogSurface>
-                  </Dialog>
-                </div>
-                <Text className={styles.channelInfo}>
-                  {playlist.playlist_videos?.length || 0} videos
-                </Text>
-              </CardFooter>
-            </Card>
+            <PlaylistCard
+              key={playlist.id}
+              playlist={playlist}
+            />
           ))}
         </div>
       </div>

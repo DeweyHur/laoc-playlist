@@ -29,6 +29,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePlaylist } from '../contexts/PlaylistContext'
 import CreatePlaylistDrawer from '../components/CreatePlaylistDrawer'
+import PlaylistCard from '../components/PlaylistCard'
 
 const useStyles = makeStyles({
   container: {
@@ -286,8 +287,9 @@ function PlaylistPage() {
         }
         setPlaylists([data])
       } else {
-        // Fetch all playlists
+        // Fetch only user's playlists
         const { data, error } = await query
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -582,45 +584,11 @@ function PlaylistPage() {
         // Playlist list view
         <div className={styles.grid}>
           {playlists.map(playlist => (
-            <Card key={playlist.id} className={styles.videoCard}>
-              <CardPreview>
-                {playlist.playlist_videos?.[0]?.thumbnail_url ? (
-                  <img
-                    src={playlist.playlist_videos[0].thumbnail_url}
-                    alt={playlist.title}
-                    className={styles.thumbnail}
-                  />
-                ) : (
-                  <div 
-                    className={styles.thumbnail}
-                    style={{ 
-                      backgroundColor: tokens.colorNeutralBackground3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text>No videos</Text>
-                  </div>
-                )}
-              </CardPreview>
-              <CardHeader>
-                <Text weight="semibold" className={styles.titleText}>
-                  {playlist.title}
-                </Text>
-                <Text className={styles.channelInfo}>
-                  {playlist.playlist_videos?.length || 0} videos
-                </Text>
-              </CardHeader>
-              <CardFooter>
-                <Button
-                  appearance="primary"
-                  onClick={() => navigate(`/playlist/${playlist.id}`)}
-                >
-                  View Playlist
-                </Button>
-              </CardFooter>
-            </Card>
+            <PlaylistCard
+              key={playlist.id}
+              playlist={playlist}
+              showSocial={true}
+            />
           ))}
         </div>
       )}
