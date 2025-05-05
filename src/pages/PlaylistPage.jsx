@@ -16,7 +16,7 @@ import {
   Input,
   Textarea,
 } from '@fluentui/react-components'
-import { 
+import {
   EditRegular,
   PlayRegular,
   AddRegular,
@@ -24,15 +24,12 @@ import {
   SaveRegular,
   DismissRegular,
   SparkleRegular,
-  ReOrderDotsHorizontalRegular,
 } from '@fluentui/react-icons'
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePlaylist } from '../contexts/PlaylistContext'
 import CreatePlaylistDrawer from '../components/CreatePlaylistDrawer'
 import PlaylistCard from '../components/PlaylistCard'
-import AddVideoDrawer from '../components/AddVideoDrawer'
 
 const useStyles = makeStyles({
   container: {
@@ -150,8 +147,6 @@ function PlaylistPage() {
   const [editedPlaylist, setEditedPlaylist] = useState(null)
   const playerRef = useRef(null)
   const playerInstanceRef = useRef(null)
-  const [orderedVideos, setOrderedVideos] = useState([])
-  const [isAddVideoDrawerOpen, setIsAddVideoDrawerOpen] = useState(false)
 
   useEffect(() => {
     fetchPlaylists()
@@ -173,12 +168,6 @@ function PlaylistPage() {
       }
     }
   }, [currentVideoIndex, playlists])
-
-  useEffect(() => {
-    if (playlists[0]?.playlist_videos) {
-      setOrderedVideos(playlists[0].playlist_videos)
-    }
-  }, [playlists])
 
   const initializePlayer = () => {
     if (playerRef.current && playlists[0]?.playlist_videos?.[currentVideoIndex]) {
@@ -282,8 +271,7 @@ function PlaylistPage() {
             title,
             channel_title,
             thumbnail_url,
-            duration,
-            "order"
+            duration
           )
         `)
 
@@ -297,8 +285,6 @@ function PlaylistPage() {
         if (!data) {
           throw new Error('Playlist not found')
         }
-        // Sort videos by order
-        data.playlist_videos = data.playlist_videos.sort((a, b) => a.order - b.order)
         setPlaylists([data])
       } else {
         // Fetch only user's playlists
@@ -307,12 +293,6 @@ function PlaylistPage() {
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        // Sort videos by order for each playlist
-        data.forEach(playlist => {
-          if (playlist.playlist_videos) {
-            playlist.playlist_videos.sort((a, b) => a.order - b.order)
-          }
-        })
         setPlaylists(data)
       }
     } catch (error) {
@@ -343,42 +323,38 @@ function PlaylistPage() {
       '미친', '미치도록', '완전', '완벽한', '최고의', '최강의', '최고급', '최상의', '최고의', '최고급',
       '매력적인', '매혹적인', '환상적인', '환상의', '환상적인', '환상의', '환상적인', '환상의', '환상적인', '환상의'
     ]
-    
+
     const nouns = [
       '비트', '리듬', '멜로디', '하모니', '음악', '노래', '음악회', '콘서트', '공연', '음악여행',
       '파티', '축제', '축하', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의',
       '무대', '무대의', '무대에서', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의'
     ]
-    
+
     const suffixes = [
       '파티', '축제', '축하', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의', '축하의',
       '무대', '무대의', '무대에서', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의', '무대에서의',
       '쇼', '쇼의', '쇼에서', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의', '쇼에서의'
     ]
-    
+
     const emojis = ['🔥', '✨', '💫', '🌟', '⭐', '🎵', '🎶', '🎸', '🎹', '🎺', '🎻', '🥁', '🎤', '🎧', '🎼']
-    
+
     const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)]
     const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
     const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)]
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
-    
+
     // Sometimes add a second emoji
     const secondEmoji = Math.random() > 0.5 ? emojis[Math.floor(Math.random() * emojis.length)] : ''
-    
+
     // Sometimes add a third word
     const thirdWord = Math.random() > 0.7 ? ` ${nouns[Math.floor(Math.random() * nouns.length)]}` : ''
-    
+
     return `${randomEmoji} ${randomPrefix} ${randomNoun}${thirdWord} ${randomSuffix} ${secondEmoji}`
   }
 
   const handleEdit = () => {
     if (playlists[0]) {
-      setEditedPlaylist({
-        title: playlists[0].title,
-        description: playlists[0].description || '',
-      })
-      setIsEditing(true)
+      navigate(`/playlist/${id}/edit`)
     }
   }
 
@@ -419,35 +395,6 @@ function PlaylistPage() {
     }
   }
 
-  const handleDragEnd = async (result) => {
-    if (!result.destination) return
-
-    const items = Array.from(orderedVideos)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-
-    setOrderedVideos(items)
-
-    // Update the order of all affected videos in the database
-    try {
-      const updates = items.map((video, index) => ({
-        id: video.id,
-        order: index
-      }))
-
-      const { error } = await supabase
-        .from('playlist_videos')
-        .upsert(updates)
-
-      if (error) throw error
-    } catch (error) {
-      console.error('Error updating video order:', error.message)
-      setError('Failed to update video order. Please try again.')
-      // Revert the order in the UI if the update fails
-      setOrderedVideos(playlists[0].playlist_videos)
-    }
-  }
-
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -477,8 +424,8 @@ function PlaylistPage() {
       {!id && (
         <div className={styles.header}>
           <Title3>My Playlists</Title3>
-          <Button 
-            appearance="primary" 
+          <Button
+            appearance="primary"
             icon={<AddRegular />}
             onClick={() => setIsCreateDrawerOpen(true)}
           >
@@ -513,22 +460,15 @@ function PlaylistPage() {
                 <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                   {isEditing ? (
                     <>
-                      <Button 
-                        appearance="primary" 
-                        icon={<AddRegular />}
-                        onClick={() => setIsAddVideoDrawerOpen(true)}
-                      >
-                        Add Video
-                      </Button>
-                      <Button 
-                        appearance="primary" 
+                      <Button
+                        appearance="primary"
                         icon={<SaveRegular />}
                         onClick={handleSave}
                       >
                         Save
                       </Button>
-                      <Button 
-                        appearance="secondary" 
+                      <Button
+                        appearance="secondary"
                         icon={<DismissRegular />}
                         onClick={handleCancel}
                       >
@@ -536,8 +476,8 @@ function PlaylistPage() {
                       </Button>
                     </>
                   ) : (
-                    <Button 
-                      appearance="primary" 
+                    <Button
+                      appearance="primary"
                       icon={<EditRegular />}
                       onClick={handleEdit}
                     >
@@ -562,95 +502,48 @@ function PlaylistPage() {
             )}
 
             <div className={styles.videoGrid}>
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="videos">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={styles.videoGrid}
-                    >
-                      {orderedVideos.map((video, index) => (
-                        <Draggable
-                          key={video.id}
-                          draggableId={video.id}
-                          index={index}
-                          isDragDisabled={!isEditing}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                opacity: snapshot.isDragging ? 0.8 : 1,
-                              }}
-                            >
-                              <Card 
-                                className={styles.videoCard}
-                                style={{
-                                  border: index === currentVideoIndex ? `2px solid ${tokens.colorBrandForeground1}` : undefined,
-                                }}
-                              >
-                                <CardPreview>
-                                  <div className={styles.thumbnailContainer}>
-                                    {isEditing && (
-                                      <div
-                                        {...provided.dragHandleProps}
-                                        style={{
-                                          position: 'absolute',
-                                          top: tokens.spacingVerticalS,
-                                          left: tokens.spacingHorizontalS,
-                                          zIndex: 1,
-                                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                          padding: tokens.spacingVerticalXS,
-                                          borderRadius: tokens.borderRadiusSmall,
-                                          cursor: 'grab',
-                                        }}
-                                      >
-                                        <ReOrderDotsHorizontalRegular />
-                                      </div>
-                                    )}
-                                    <img
-                                      src={video.thumbnail_url}
-                                      alt={video.title}
-                                      className={styles.thumbnail}
-                                    />
-                                    {video.duration && (
-                                      <div className={styles.duration}>{video.duration}</div>
-                                    )}
-                                  </div>
-                                </CardPreview>
-                                <CardHeader>
-                                  <Text weight="semibold" className={styles.titleText}>
-                                    {video.title}
-                                  </Text>
-                                  <Text className={styles.channelInfo}>
-                                    {video.channel_title}
-                                  </Text>
-                                </CardHeader>
-                                <CardFooter>
-                                  <Button
-                                    appearance="primary"
-                                    icon={<PlayRegular />}
-                                    onClick={() => {
-                                      setCurrentVideoIndex(index)
-                                      setIsPlaying(true)
-                                    }}
-                                  >
-                                    {index === currentVideoIndex && isPlaying ? 'Playing' : 'Play'}
-                                  </Button>
-                                </CardFooter>
-                              </Card>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
+              {playlist.playlist_videos?.map((video, index) => (
+                <Card
+                  key={video.id}
+                  className={styles.videoCard}
+                  style={{
+                    border: index === currentVideoIndex ? `2px solid ${tokens.colorBrandForeground1}` : undefined,
+                  }}
+                >
+                  <CardPreview>
+                    <div className={styles.thumbnailContainer}>
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        className={styles.thumbnail}
+                      />
+                      {video.duration && (
+                        <div className={styles.duration}>{video.duration}</div>
+                      )}
                     </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                  </CardPreview>
+                  <CardHeader>
+                    <Text weight="semibold" className={styles.titleText}>
+                      {video.title}
+                    </Text>
+                    <Text className={styles.channelInfo}>
+                      {video.channel_title}
+                    </Text>
+                  </CardHeader>
+                  <CardFooter>
+                    <Button
+                      appearance="primary"
+                      icon={<PlayRegular />}
+                      onClick={() => {
+                        setCurrentVideoIndex(index)
+                        setIsPlaying(true)
+                      }}
+                    >
+                      {index === currentVideoIndex && isPlaying ? 'Playing' : 'Play'}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
 
             {/* Floating YouTube Player */}
@@ -681,15 +574,6 @@ function PlaylistPage() {
                 </div>
               </div>
             )}
-
-            <AddVideoDrawer
-              isOpen={isAddVideoDrawerOpen}
-              onClose={() => setIsAddVideoDrawerOpen(false)}
-              playlistId={playlist.id}
-              onVideoAdded={(newVideo) => {
-                setOrderedVideos([...orderedVideos, newVideo])
-              }}
-            />
           </div>
         ))
       ) : (
