@@ -5,6 +5,7 @@ import PlaylistPage from './pages/PlaylistPage'
 import EditPlaylistPage from './pages/EditPlaylistPage'
 import RegularPerformancePage from './pages/RegularPerformancePage'
 import RegularPerformanceAdminPage from './pages/RegularPerformanceAdminPage'
+import PerformanceVideoManagePage from './pages/PerformanceVideoManagePage'
 import Layout from './components/Layout'
 import ProfilePage from './pages/ProfilePage'
 import { AuthProvider } from './contexts/AuthContext'
@@ -34,6 +35,7 @@ function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/regular-performance" element={<RegularPerformancePage />} />
                   <Route path="/regular-performance/admin" element={<RegularPerformanceAdminPage />} />
+                  <Route path="/regular-performance/admin/:performanceId/videos" element={<PerformanceVideoManagePage />} />
                 </Route>
               </Routes>
             </Router>

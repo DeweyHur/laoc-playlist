@@ -126,9 +126,10 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles(
+                    roles:performance_video_roles_with_users(
                         role,
-                        user:user_profiles!performance_video_roles_user_id_fkey(email)
+                        user_email,
+                        user_display_name
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -211,9 +212,10 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles(
+                    roles:performance_video_roles_with_users(
                         role,
-                        user:user_profiles!performance_video_roles_user_id_fkey(email)
+                        user_email,
+                        user_display_name
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -283,9 +285,10 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles(
+                    roles:performance_video_roles_with_users(
                         role,
-                        user:user_profiles!performance_video_roles_user_id_fkey(email)
+                        user_email,
+                        user_display_name
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -310,7 +313,7 @@ function PerformanceVideoManagePage() {
     const groupRolesByUser = (roles) => {
         const userRoles = {}
         roles.forEach(role => {
-            const email = role.user.email
+            const email = role.user_email
             if (!userRoles[email]) {
                 userRoles[email] = []
             }
@@ -451,7 +454,7 @@ function PerformanceVideoManagePage() {
                                     onOptionSelect={(e, data) => {
                                         const userId = data.optionValue
                                         const selectedUser = users.find(u => u.id === userId)
-                                        const existingRoles = video.roles?.filter(role => role.user.email === selectedUser.email) || []
+                                        const existingRoles = video.roles?.filter(role => role.user_email === selectedUser.email) || []
                                         setEditingStates(prev => ({
                                             ...prev,
                                             [video.id]: {
@@ -538,7 +541,7 @@ function PerformanceVideoManagePage() {
                                         icon={<AddRegular />}
                                         onClick={() => handleAddRole(video.id)}
                                     >
-                                        {editingStates[video.id]?.user && video.roles?.some(role => role.user.email === editingStates[video.id].user)
+                                        {editingStates[video.id]?.user && video.roles?.some(role => role.user_email === editingStates[video.id].user)
                                             ? 'Edit Performer'
                                             : 'Add Performer'
                                         }

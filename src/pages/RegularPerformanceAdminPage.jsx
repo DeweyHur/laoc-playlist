@@ -125,7 +125,7 @@ const useStyles = makeStyles({
 function RegularPerformanceAdminPage() {
     const styles = useStyles()
     const navigate = useNavigate()
-    const { isAdmin, isDevelopment } = useAuth()
+    const { isAdmin, isDevelopment, userProfile } = useAuth()
     const [performances, setPerformances] = useState([])
     const [locations, setLocations] = useState([])
     const [users, setUsers] = useState([])
@@ -133,12 +133,6 @@ function RegularPerformanceAdminPage() {
     const [error, setError] = useState(null)
     const [isEditing, setIsEditing] = useState(false)
     const [editedPerformance, setEditedPerformance] = useState(null)
-    const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false)
-    const [selectedPerformance, setSelectedPerformance] = useState(null)
-    const [videos, setVideos] = useState([])
-    const [newVideoUrl, setNewVideoUrl] = useState('')
-    const [newVideoRole, setNewVideoRole] = useState('')
-    const [newVideoUser, setNewVideoUser] = useState('')
     const [selectedLocation, setSelectedLocation] = useState(null)
 
     useEffect(() => {
@@ -295,144 +289,8 @@ function RegularPerformanceAdminPage() {
         setEditedPerformance(null)
     }
 
-    const handleOpenVideoDialog = async (performance) => {
-        setSelectedPerformance(performance)
-        setIsVideoDialogOpen(true)
-
-        // Fetch videos for this performance
-        const { data, error } = await supabase
-            .from('performance_videos')
-            .select(`
-                *,
-                roles:performance_video_roles(
-                    role,
-                    user:users(email)
-                )
-            `)
-            .eq('performance_id', performance.id)
-            .order('created_at', { ascending: true })
-
-        if (error) {
-            setError(error.message)
-            return
-        }
-
-        setVideos(data || [])
-    }
-
-    const handleAddVideo = async () => {
-        try {
-            const videoId = extractVideoId(newVideoUrl)
-            if (!videoId) {
-                setError('Invalid YouTube URL')
-                return
-            }
-
-            // Fetch video metadata from YouTube API
-            const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${process.env.REACT_APP_YOUTUBE_API_KEY}`)
-            const data = await response.json()
-
-            if (!data.items?.[0]) {
-                setError('Video not found')
-                return
-            }
-
-            const video = data.items[0]
-            const { snippet, contentDetails } = video
-
-            // Insert video
-            const { data: videoData, error: videoError } = await supabase
-                .from('performance_videos')
-                .insert({
-                    performance_id: selectedPerformance.id,
-                    youtube_url: newVideoUrl,
-                    title: snippet.title,
-                    channel_title: snippet.channelTitle,
-                    thumbnail_url: snippet.thumbnails.high.url,
-                    duration: contentDetails.duration,
-                })
-                .select()
-                .single()
-
-            if (videoError) throw videoError
-
-            // Add role if specified
-            if (newVideoRole && newVideoUser) {
-                const { error: roleError } = await supabase
-                    .from('performance_video_roles')
-                    .insert({
-                        video_id: videoData.id,
-                        role: newVideoRole,
-                        user_id: newVideoUser,
-                    })
-
-                if (roleError) throw roleError
-            }
-
-            // Refresh videos
-            const { data: updatedVideos, error: fetchError } = await supabase
-                .from('performance_videos')
-                .select(`
-                    *,
-                    roles:performance_video_roles(
-                        role,
-                        user:users(email)
-                    )
-                `)
-                .eq('performance_id', selectedPerformance.id)
-                .order('created_at', { ascending: true })
-
-            if (fetchError) throw fetchError
-
-            setVideos(updatedVideos || [])
-            setNewVideoUrl('')
-            setNewVideoRole('')
-            setNewVideoUser('')
-        } catch (error) {
-            console.error('Error adding video:', error.message)
-            setError(error.message)
-        }
-    }
-
-    const handleAddRole = async (videoId) => {
-        try {
-            if (!newVideoRole || !newVideoUser) {
-                setError('Please specify both role and user')
-                return
-            }
-
-            const { error } = await supabase
-                .from('performance_video_roles')
-                .insert({
-                    video_id,
-                    role: newVideoRole,
-                    user_id: newVideoUser,
-                })
-
-            if (error) throw error
-
-            // Refresh videos
-            const { data: updatedVideos, error: fetchError } = await supabase
-                .from('performance_videos')
-                .select(`
-                    *,
-                    roles:performance_video_roles(
-                        role,
-                        user:users(email)
-                    )
-                `)
-                .eq('performance_id', selectedPerformance.id)
-                .order('created_at', { ascending: true })
-
-            if (fetchError) throw fetchError
-
-            setVideos(updatedVideos || [])
-            setNewVideoRole('')
-            setNewVideoUser('')
-        } catch (error) {
-            console.error('Error adding role:', error.message)
-            setError(error.message)
-        }
+    const handleOpenVideoDialog = (performance) => {
+        navigate(`/regular-performance/admin/${performance.id}/videos`)
     }
 
     const handleLocationSelect = async (location) => {
@@ -625,128 +483,6 @@ function RegularPerformanceAdminPage() {
                     ))}
                 </div>
             )}
-
-            <Dialog open={isVideoDialogOpen} onOpenChange={(e, data) => setIsVideoDialogOpen(data.open)}>
-                <DialogSurface>
-                    <DialogBody>
-                        <DialogTitle>Manage Videos - {selectedPerformance?.title}</DialogTitle>
-                        <DialogContent>
-                            <div className={styles.form}>
-                                <Input
-                                    value={newVideoUrl}
-                                    onChange={(e) => setNewVideoUrl(e.target.value)}
-                                    placeholder="YouTube URL"
-                                    style={{ marginBottom: tokens.spacingVerticalM }}
-                                />
-                                <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
-                                    <Combobox
-                                        value={newVideoRole}
-                                        onOptionSelect={(e, data) => setNewVideoRole(data.optionValue)}
-                                        placeholder="Role"
-                                        style={{ flex: 1 }}
-                                    >
-                                        <Listbox>
-                                            <ComboboxOption value="Drum">Drum</ComboboxOption>
-                                            <ComboboxOption value="Guitar">Guitar</ComboboxOption>
-                                            <ComboboxOption value="Bass">Bass</ComboboxOption>
-                                            <ComboboxOption value="Vocal">Vocal</ComboboxOption>
-                                            <ComboboxOption value="Keyboard">Keyboard</ComboboxOption>
-                                        </Listbox>
-                                    </Combobox>
-                                    <Combobox
-                                        value={users.find(u => u.id === newVideoUser)?.display_name || ''}
-                                        onOptionSelect={(e, data) => setNewVideoUser(data.optionValue)}
-                                        placeholder="User"
-                                        style={{ flex: 1 }}
-                                    >
-                                        <Listbox>
-                                            {users.map(user => (
-                                                <ComboboxOption key={user.id} value={user.id}>
-                                                    {user.display_name}
-                                                </ComboboxOption>
-                                            ))}
-                                        </Listbox>
-                                    </Combobox>
-                                </div>
-                                <Button
-                                    appearance="primary"
-                                    icon={<AddRegular />}
-                                    onClick={handleAddVideo}
-                                >
-                                    Add Video
-                                </Button>
-                            </div>
-
-                            <div className={styles.videoList}>
-                                {videos.map((video) => (
-                                    <div key={video.id} className={styles.videoItem}>
-                                        <img
-                                            src={video.thumbnail_url}
-                                            alt={video.title}
-                                            style={{ width: '120px', borderRadius: tokens.borderRadiusSmall }}
-                                        />
-                                        <div style={{ flex: 1 }}>
-                                            <Title3>{video.title}</Title3>
-                                            <Text className={styles.channelInfo}>{video.channel_title}</Text>
-                                            <div className={styles.roleList}>
-                                                {video.roles?.map((role) => (
-                                                    <div key={role.id} className={styles.roleTag}>
-                                                        <PersonRegular />
-                                                        <Text>{role.role}: {role.user.email}</Text>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
-                                            <Combobox
-                                                value={newVideoRole}
-                                                onOptionSelect={(e, data) => setNewVideoRole(data.optionValue)}
-                                                placeholder="Role"
-                                            >
-                                                <Listbox>
-                                                    <ComboboxOption value="Drum">Drum</ComboboxOption>
-                                                    <ComboboxOption value="Guitar">Guitar</ComboboxOption>
-                                                    <ComboboxOption value="Bass">Bass</ComboboxOption>
-                                                    <ComboboxOption value="Vocal">Vocal</ComboboxOption>
-                                                    <ComboboxOption value="Keyboard">Keyboard</ComboboxOption>
-                                                </Listbox>
-                                            </Combobox>
-                                            <Combobox
-                                                value={users.find(u => u.id === newVideoUser)?.display_name || ''}
-                                                onOptionSelect={(e, data) => setNewVideoUser(data.optionValue)}
-                                                placeholder="User"
-                                            >
-                                                <Listbox>
-                                                    {users.map(user => (
-                                                        <ComboboxOption key={user.id} value={user.id}>
-                                                            {user.display_name}
-                                                        </ComboboxOption>
-                                                    ))}
-                                                </Listbox>
-                                            </Combobox>
-                                            <Button
-                                                appearance="secondary"
-                                                icon={<AddRegular />}
-                                                onClick={() => handleAddRole(video.id)}
-                                            >
-                                                Add Role
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </DialogContent>
-                        <DialogActions>
-                            <Button
-                                appearance="secondary"
-                                onClick={() => setIsVideoDialogOpen(false)}
-                            >
-                                Close
-                            </Button>
-                        </DialogActions>
-                    </DialogBody>
-                </DialogSurface>
-            </Dialog>
         </div>
     )
 }
