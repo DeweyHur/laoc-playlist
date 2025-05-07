@@ -41,7 +41,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { extractVideoId } from '../lib/youtubeUtils'
-import LocationAutocomplete from '../components/LocationAutocomplete'
 
 const useStyles = makeStyles({
     container: {
@@ -127,13 +126,11 @@ function RegularPerformanceAdminPage() {
     const navigate = useNavigate()
     const { isAdmin, isDevelopment, userProfile } = useAuth()
     const [performances, setPerformances] = useState([])
-    const [locations, setLocations] = useState([])
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [isEditing, setIsEditing] = useState(false)
     const [editedPerformance, setEditedPerformance] = useState(null)
-    const [selectedLocation, setSelectedLocation] = useState(null)
 
     useEffect(() => {
         if (!loading && !isAdmin() && !isDevelopment) {
@@ -155,20 +152,11 @@ function RegularPerformanceAdminPage() {
                 .from('regular_performances')
                 .select(`
                     *,
-                    location:locations(name),
                     participants:performance_participants_with_users(*)
                 `)
                 .order('date', { ascending: false })
 
             if (performancesError) throw performancesError
-
-            // Fetch locations
-            const { data: locationsData, error: locationsError } = await supabase
-                .from('locations')
-                .select('*')
-                .order('name')
-
-            if (locationsError) throw locationsError
 
             // Fetch users
             const { data: usersData, error: usersError } = await supabase
@@ -179,7 +167,6 @@ function RegularPerformanceAdminPage() {
             if (usersError) throw usersError
 
             setPerformances(performancesData || [])
-            setLocations(locationsData || [])
             setUsers(usersData || [])
         } catch (error) {
             console.error('Error fetching data:', error.message)
@@ -195,7 +182,7 @@ function RegularPerformanceAdminPage() {
             title: performance.title,
             description: performance.description || '',
             date: performance.date,
-            location_id: performance.location_id || '',
+            location: performance.location || '',
             participants: performance.participants?.map(p => p.user.id) || [],
         })
         setIsEditing(true)
@@ -213,7 +200,7 @@ function RegularPerformanceAdminPage() {
                         title: editedPerformance.title,
                         description: editedPerformance.description,
                         date: editedPerformance.date,
-                        location_id: editedPerformance.location_id,
+                        location: editedPerformance.location,
                     })
                     .eq('id', editedPerformance.id)
                     .select()
@@ -251,7 +238,7 @@ function RegularPerformanceAdminPage() {
                         title: editedPerformance.title,
                         description: editedPerformance.description,
                         date: editedPerformance.date,
-                        location_id: editedPerformance.location_id,
+                        location: editedPerformance.location,
                     })
                     .select()
                     .single();
@@ -293,50 +280,6 @@ function RegularPerformanceAdminPage() {
         navigate(`/regular-performance/admin/${performance.id}/videos`)
     }
 
-    const handleLocationSelect = async (location) => {
-        try {
-            // Check if location already exists
-            const { data: existingLocation } = await supabase
-                .from('locations')
-                .select('*')
-                .eq('place_id', location.place_id)
-                .single()
-
-            if (existingLocation) {
-                setSelectedLocation(existingLocation)
-                setEditedPerformance(prev => ({
-                    ...prev,
-                    location_id: existingLocation.id
-                }))
-                return
-            }
-
-            // Create new location
-            const { data: newLocation, error } = await supabase
-                .from('locations')
-                .insert({
-                    name: location.name,
-                    place_id: location.place_id,
-                    address: location.address,
-                    lat: location.lat,
-                    lng: location.lng
-                })
-                .select()
-                .single()
-
-            if (error) throw error
-
-            setSelectedLocation(newLocation)
-            setEditedPerformance(prev => ({
-                ...prev,
-                location_id: newLocation.id
-            }))
-        } catch (error) {
-            console.error('Error saving location:', error.message)
-            setError(error.message)
-        }
-    }
-
     if (loading) {
         return (
             <div className={styles.loadingContainer}>
@@ -364,7 +307,7 @@ function RegularPerformanceAdminPage() {
                                 title: '',
                                 description: '',
                                 date: new Date().toISOString().split('T')[0],
-                                location_id: '',
+                                location: '',
                                 participants: [],
                             })
                             setIsEditing(true)
@@ -395,10 +338,11 @@ function RegularPerformanceAdminPage() {
                         onChange={(e) => setEditedPerformance(prev => ({ ...prev, date: e.target.value }))}
                         style={{ marginBottom: tokens.spacingVerticalM }}
                     />
-                    <LocationAutocomplete
-                        value={selectedLocation?.name || ''}
-                        onChange={(value) => setSelectedLocation(prev => ({ ...prev, name: value }))}
-                        onSelect={handleLocationSelect}
+                    <Input
+                        value={editedPerformance.location}
+                        onChange={(e) => setEditedPerformance(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="Location"
+                        style={{ marginBottom: tokens.spacingVerticalM }}
                     />
                     <Label>Participants</Label>
                     <Combobox
@@ -452,7 +396,7 @@ function RegularPerformanceAdminPage() {
                             <div className={styles.videoInfo}>
                                 <Title3>{performance.title}</Title3>
                                 <Text className={styles.channelInfo}>
-                                    {new Date(performance.date).toLocaleDateString()} - {performance.location?.name}
+                                    {new Date(performance.date).toLocaleDateString()} - {performance.location}
                                 </Text>
                                 {performance.description && (
                                     <Text className={styles.description}>{performance.description}</Text>
