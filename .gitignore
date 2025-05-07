@@ -33,3 +33,6 @@ dist-ssr
 *.sql
 schema.sql
 !supabase/migrations/*.sql
+
+# Supabase
+supabase/complete_schema.sql

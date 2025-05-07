@@ -26,7 +26,7 @@ function AuthCallback() {
         }
 
         console.log('AuthCallback: Session found, user:', session.user)
-        
+
         // Create user profile if it doesn't exist
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
@@ -49,7 +49,6 @@ function AuthCallback() {
             .insert([
               {
                 id: session.user.id,
-                email: session.user.email,
                 nickname: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Anonymous'
               }
             ])
@@ -66,7 +65,7 @@ function AuthCallback() {
       } catch (error) {
         console.error('AuthCallback: Error in callback handling:', error.message)
         setError('Failed to complete sign in. Please try again: ' + error.message)
-        
+
         // For errors, wait a bit before redirecting
         setTimeout(() => {
           navigate('/', { replace: true })
