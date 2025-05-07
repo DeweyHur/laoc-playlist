@@ -403,7 +403,7 @@ function RegularPerformanceAdminPage() {
                     <Label>Participants</Label>
                     <Combobox
                         multiselect
-                        value={editedPerformance.participants.map(id => users.find(u => u.id === id)?.display_name || '')}
+                        value={editedPerformance.participants.map(id => users.find(u => u.id === id)?.nickname || '')}
                         onOptionSelect={(e, data) => {
                             const userId = data.optionValue
                             setEditedPerformance(prev => ({
@@ -418,7 +418,7 @@ function RegularPerformanceAdminPage() {
                         <Listbox>
                             {users.map(user => (
                                 <ComboboxOption key={user.id} value={user.id}>
-                                    {user.display_name}
+                                    {user.nickname || 'Anonymous'}
                                 </ComboboxOption>
                             ))}
                         </Listbox>
@@ -459,7 +459,7 @@ function RegularPerformanceAdminPage() {
                                 )}
                                 {performance.participants?.length > 0 && (
                                     <Text className={styles.channelInfo}>
-                                        Participants: {performance.participants.map(p => p.user_email).join(', ')}
+                                        Participants: {performance.participants.map(p => p.nickname || 'Anonymous').join(', ')}
                                     </Text>
                                 )}
                             </div>

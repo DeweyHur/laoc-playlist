@@ -30,18 +30,30 @@ CREATE POLICY "Anyone can view performance videos"
     ON public.performance_videos FOR SELECT
     USING (true);
 
-CREATE POLICY "Only admins can manage performance videos"
+CREATE POLICY "Only admins and development users can manage performance videos"
     ON public.performance_videos FOR ALL
-    USING (is_admin(auth.uid()));
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.id = auth.uid()
+            AND (user_profiles.role = 'admin' OR user_profiles.is_development = true)
+        )
+    );
 
 -- Create policies for performance_video_roles
 CREATE POLICY "Anyone can view performance video roles"
     ON public.performance_video_roles FOR SELECT
     USING (true);
 
-CREATE POLICY "Only admins can manage performance video roles"
+CREATE POLICY "Only admins and development users can manage performance video roles"
     ON public.performance_video_roles FOR ALL
-    USING (is_admin(auth.uid()));
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.id = auth.uid()
+            AND (user_profiles.role = 'admin' OR user_profiles.is_development = true)
+        )
+    );
 
 -- Create trigger for updated_at
 CREATE TRIGGER on_performance_video_updated

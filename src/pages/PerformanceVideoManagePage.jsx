@@ -126,10 +126,13 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles_with_users(
+                    roles:performance_video_roles(
                         role,
-                        user_email,
-                        user_display_name
+                        user_id,
+                        user:user_profiles(
+                            email,
+                            nickname
+                        )
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -212,10 +215,13 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles_with_users(
+                    roles:performance_video_roles(
                         role,
-                        user_email,
-                        user_display_name
+                        user_id,
+                        user:user_profiles(
+                            email,
+                            nickname
+                        )
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -241,8 +247,8 @@ function PerformanceVideoManagePage() {
                 return
             }
 
-            // Find the user ID from the email
-            const selectedUser = users.find(u => u.email === editingState.user)
+            // Find the user by ID
+            const selectedUser = users.find(u => u.id === editingState.user)
             if (!selectedUser) {
                 throw new Error('User not found')
             }
@@ -285,10 +291,13 @@ function PerformanceVideoManagePage() {
                 .from('performance_videos')
                 .select(`
                     *,
-                    roles:performance_video_roles_with_users(
+                    roles:performance_video_roles(
                         role,
-                        user_email,
-                        user_display_name
+                        user_id,
+                        user:user_profiles(
+                            email,
+                            nickname
+                        )
                     )
                 `)
                 .eq('performance_id', performanceId)
@@ -313,11 +322,11 @@ function PerformanceVideoManagePage() {
     const groupRolesByUser = (roles) => {
         const userRoles = {}
         roles.forEach(role => {
-            const email = role.user_email
-            if (!userRoles[email]) {
-                userRoles[email] = []
+            const userId = role.user_id
+            if (!userRoles[userId]) {
+                userRoles[userId] = []
             }
-            userRoles[email].push(role.role)
+            userRoles[userId].push(role.role)
         })
         return userRoles
     }
@@ -356,7 +365,7 @@ function PerformanceVideoManagePage() {
                 />
                 <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                     <Combobox
-                        value={users.find(u => u.id === newVideoUser)?.display_name || ''}
+                        value={users.find(u => u.id === newVideoUser)?.nickname || ''}
                         onOptionSelect={(e, data) => setNewVideoUser(data.optionValue)}
                         placeholder="Select User"
                         style={{ flex: 1 }}
@@ -364,7 +373,7 @@ function PerformanceVideoManagePage() {
                         <Listbox>
                             {users.map(user => (
                                 <ComboboxOption key={user.id} value={user.id}>
-                                    {user.display_name}
+                                    {user.nickname || 'Anonymous'}
                                 </ComboboxOption>
                             ))}
                         </Listbox>
@@ -393,7 +402,7 @@ function PerformanceVideoManagePage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
                             <Text weight="semibold">
-                                {users.find(u => u.id === newVideoUser)?.display_name}:
+                                {users.find(u => u.id === newVideoUser)?.nickname || 'Anonymous'}:
                             </Text>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS }}>
                                 {newVideoRoles.map(role => (
@@ -439,10 +448,10 @@ function PerformanceVideoManagePage() {
                             <Title3>{video.title}</Title3>
                             <Text className={styles.channelInfo}>{video.channel_title}</Text>
                             <div className={styles.roleList}>
-                                {Object.entries(groupRolesByUser(video.roles || [])).map(([email, roles]) => (
-                                    <div key={email} className={styles.roleTag}>
+                                {Object.entries(groupRolesByUser(video.roles || [])).map(([userId, roles]) => (
+                                    <div key={userId} className={styles.roleTag}>
                                         <PersonRegular />
-                                        <Text>{email}: {roles.join(', ')}</Text>
+                                        <Text>{video.roles?.find(r => r.user_id === userId)?.user?.nickname || 'Anonymous'}: {roles.join(', ')}</Text>
                                     </div>
                                 ))}
                             </div>
@@ -450,16 +459,16 @@ function PerformanceVideoManagePage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
                             <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                                 <Combobox
-                                    value={users.find(u => u.email === editingStates[video.id]?.user)?.display_name || ''}
+                                    value={users.find(u => u.id === editingStates[video.id]?.user)?.nickname || ''}
                                     onOptionSelect={(e, data) => {
                                         const userId = data.optionValue
                                         const selectedUser = users.find(u => u.id === userId)
-                                        const existingRoles = video.roles?.filter(role => role.user_email === selectedUser.email) || []
+                                        const existingRoles = video.roles?.filter(role => role.user_id === selectedUser.id) || []
                                         setEditingStates(prev => ({
                                             ...prev,
                                             [video.id]: {
                                                 ...prev[video.id],
-                                                user: selectedUser.email,
+                                                user: selectedUser.id,
                                                 roles: existingRoles.map(role => role.role)
                                             }
                                         }))
@@ -470,7 +479,7 @@ function PerformanceVideoManagePage() {
                                     <Listbox>
                                         {users.map(user => (
                                             <ComboboxOption key={user.id} value={user.id}>
-                                                {user.display_name}
+                                                {user.nickname || 'Anonymous'}
                                             </ComboboxOption>
                                         ))}
                                     </Listbox>
@@ -505,7 +514,7 @@ function PerformanceVideoManagePage() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
                                         <Text weight="semibold">
-                                            {users.find(u => u.email === editingStates[video.id]?.user)?.display_name}:
+                                            {users.find(u => u.id === editingStates[video.id]?.user)?.nickname || 'Anonymous'}:
                                         </Text>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS }}>
                                             {editingStates[video.id]?.roles.map(role => (
@@ -541,7 +550,7 @@ function PerformanceVideoManagePage() {
                                         icon={<AddRegular />}
                                         onClick={() => handleAddRole(video.id)}
                                     >
-                                        {editingStates[video.id]?.user && video.roles?.some(role => role.user_email === editingStates[video.id].user)
+                                        {editingStates[video.id]?.user && video.roles?.some(role => role.user_id === editingStates[video.id].user)
                                             ? 'Edit Performer'
                                             : 'Add Performer'
                                         }

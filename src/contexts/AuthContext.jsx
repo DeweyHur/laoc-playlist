@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const AuthContext = createContext()
+const AuthContext = createContext({})
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
 
-  const isDevelopment = import.meta.env.DEV
+  const isDevelopment = import.meta.env.VITE_IS_DEVELOPMENT === 'true'
   console.log('isDevelopment:', isDevelopment)
 
   const fetchUserProfile = async (userId) => {
@@ -37,6 +37,10 @@ export function AuthProvider({ children }) {
 
   const isAdmin = () => {
     return userProfile?.role === 'admin'
+  }
+
+  const canManagePerformances = () => {
+    return isAdmin() || isDevelopment
   }
 
   useEffect(() => {
@@ -137,6 +141,7 @@ export function AuthProvider({ children }) {
     handleLogout,
     refreshUserProfile,
     isAdmin,
+    canManagePerformances
   }
 
   return (
@@ -146,10 +151,6 @@ export function AuthProvider({ children }) {
   )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
+export const useAuth = () => {
+  return useContext(AuthContext)
 } 

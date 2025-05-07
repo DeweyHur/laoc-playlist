@@ -1,15 +1,17 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  Spinner, 
-  Text, 
-  Button, 
+import {
+  Spinner,
+  Text,
+  Button,
   Input,
-  makeStyles, 
+  makeStyles,
   tokens,
   MessageBar,
   MessageBarBody,
 } from '@fluentui/react-components'
+import { EyeRegular, EyeOffRegular } from '@fluentui/react-icons'
+import { useState } from 'react'
 
 const useStyles = makeStyles({
   container: {
@@ -39,18 +41,32 @@ const useStyles = makeStyles({
   title: {
     marginBottom: tokens.spacingVerticalL,
     textAlign: 'center',
+  },
+  passwordInput: {
+    position: 'relative',
+  },
+  visibilityButton: {
+    position: 'absolute',
+    right: '8px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    padding: '4px',
+    cursor: 'pointer',
+    color: tokens.colorNeutralForeground1,
   }
 })
 
 function ProtectedRoute({ children }) {
   const styles = useStyles()
-  const { 
-    user, 
-    loading, 
-    email, 
-    setEmail, 
-    password, 
-    setPassword, 
+  const {
+    user,
+    loading,
+    email,
+    setEmail,
+    password,
+    setPassword,
     error,
     isDevelopment,
     handleKakaoLogin,
@@ -58,6 +74,7 @@ function ProtectedRoute({ children }) {
     handleSignUp,
     handleLogout
   } = useAuth()
+  const [showPassword, setShowPassword] = useState(false)
 
   console.log('ProtectedRoute - Auth State:', { user, loading, error })
 
@@ -96,13 +113,22 @@ function ProtectedRoute({ children }) {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Input
-              type="password"
-              placeholder="비밀번호"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className={styles.passwordInput}>
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className={styles.visibilityButton}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOffRegular /> : <EyeRegular />}
+              </button>
+            </div>
             <div className={styles.buttonGroup}>
               <Button appearance="primary" type="submit">
                 로그인
