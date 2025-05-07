@@ -22,7 +22,25 @@ export const AuthProvider = ({ children }) => {
         .eq('id', userId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log('Creating new user profile for:', userId)
+          const { data: newProfile, error: insertError } = await supabase
+            .from('user_profiles')
+            .insert([{
+              id: userId,
+              nickname: user?.user_metadata?.full_name || user?.user_metadata?.name || 'Anonymous'
+            }])
+            .select()
+            .single()
+
+          if (insertError) throw insertError
+          setUserProfile(newProfile)
+          return
+        }
+        throw error
+      }
       setUserProfile(data)
     } catch (error) {
       console.error('Error fetching user profile:', error)

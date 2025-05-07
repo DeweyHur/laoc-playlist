@@ -1,28 +1,29 @@
 #!/bin/bash
 
-# Color codes for output
+# Colors for output
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Get database URL from Supabase
-DB_URL=$(supabase db remote --show-url)
+echo -e "${GREEN}Resetting remote database schema...${NC}"
 
-echo -e "${YELLOW}Resetting remote database schema...${NC}"
+# Confirm with user
+read -p "Do you want to reset the remote database? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]
+then
+    echo -e "${RED}Operation cancelled${NC}"
+    exit 1
+fi
 
-# Reset database with empty seed file
+echo -e "${GREEN}Resetting remote database...${NC}"
+
+# First, merge the schema files
+./scripts/merge-schema.sh
+
+# Reset and push to the remote database
 supabase db reset --linked
-
-echo -e "${YELLOW}Applying schema files in order...${NC}"
-
-# Apply schema files in order
-for file in supabase/schema/{01,02,03,04,05,06}_*.sql; do
-    if [ -f "$file" ]; then
-        echo -e "${YELLOW}Applying $file...${NC}"
-        PGPASSWORD=postgres psql "$DB_URL" -f "$file"
-    fi
-done
+supabase db push
 
 echo -e "${GREEN}Remote database reset complete!${NC}"
-echo -e "${YELLOW}Note: No test accounts were created.${NC}" 
+echo "Note: No test accounts were created." 

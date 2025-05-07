@@ -89,7 +89,6 @@ export function ChatProvider({ children }) {
           .from('user_profiles')
           .insert([{
             id: user.id,
-            email: user.email,
             nickname: user.user_metadata?.name || 'Anonymous'
           }]);
 
@@ -201,7 +200,6 @@ export function ChatProvider({ children }) {
           .from('user_profiles')
           .insert([{
             id: user.id,
-            email: user.email,
             nickname: user.user_metadata?.name || 'Anonymous'
           }]);
 
