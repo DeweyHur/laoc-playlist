@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Title3,
   Text,
@@ -9,7 +10,9 @@ import {
   MessageBarBody,
   Card,
   CardPreview,
+  Button,
 } from '@fluentui/react-components'
+import { PlayRegular } from '@fluentui/react-icons'
 import { supabase } from '../lib/supabase'
 
 const useStyles = makeStyles({
@@ -61,6 +64,7 @@ const useStyles = makeStyles({
 
 function RegularPerformancePage() {
   const styles = useStyles()
+  const navigate = useNavigate()
   const [performances, setPerformances] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -127,6 +131,14 @@ function RegularPerformancePage() {
               {performance.description && (
                 <Text className={styles.description}>{performance.description}</Text>
               )}
+              <Button
+                appearance="primary"
+                icon={<PlayRegular />}
+                onClick={() => navigate(`/regular-performance/${performance.id}`)}
+                style={{ marginTop: tokens.spacingVerticalM }}
+              >
+                View Videos
+              </Button>
             </div>
           </Card>
         ))}
