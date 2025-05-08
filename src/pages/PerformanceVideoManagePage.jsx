@@ -130,7 +130,7 @@ function PerformanceVideoManagePage() {
                         role,
                         user_id,
                         user:user_profiles(
-                            email,
+                            id,
                             nickname
                         )
                     )
@@ -219,7 +219,7 @@ function PerformanceVideoManagePage() {
                         role,
                         user_id,
                         user:user_profiles(
-                            email,
+                            id,
                             nickname
                         )
                     )
@@ -295,7 +295,7 @@ function PerformanceVideoManagePage() {
                         role,
                         user_id,
                         user:user_profiles(
-                            email,
+                            id,
                             nickname
                         )
                     )

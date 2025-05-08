@@ -127,6 +127,7 @@ function RegularPerformanceAdminPage() {
     const { isAdmin, isDevelopment, userProfile } = useAuth()
     const [performances, setPerformances] = useState([])
     const [users, setUsers] = useState([])
+    const [playlists, setPlaylists] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [isEditing, setIsEditing] = useState(false)
@@ -151,25 +152,48 @@ function RegularPerformanceAdminPage() {
             const { data: performancesData, error: performancesError } = await supabase
                 .from('regular_performances')
                 .select(`
-                    *,
-                    participants:performance_participants_with_users(*)
+                    id,
+                    title,
+                    description,
+                    date,
+                    location,
+                    created_at,
+                    updated_at,
+                    performance_videos (
+                        id,
+                        title,
+                        performance_video_roles (
+                            role,
+                            user_profiles (
+                                id,
+                                nickname
+                            )
+                        )
+                    )
                 `)
                 .order('date', { ascending: false })
 
-            if (performancesError) throw performancesError
+            if (performancesError) {
+                console.error('Error in performances fetch:', performancesError)
+                throw performancesError
+            }
 
             // Fetch users
             const { data: usersData, error: usersError } = await supabase
-                .from('user_profiles_with_email')
-                .select('*')
-                .order('email')
+                .from('user_profiles')
+                .select('id, nickname')
+                .order('nickname')
 
-            if (usersError) throw usersError
+            if (usersError) {
+                console.error('Error in users fetch:', usersError)
+                throw usersError
+            }
 
             setPerformances(performancesData || [])
             setUsers(usersData || [])
         } catch (error) {
-            console.error('Error fetching data:', error.message)
+            console.error('Error caught in fetchData:', error.message)
+            console.error('Error stack:', error.stack)
             setError(error.message)
         } finally {
             setLoading(false)
@@ -208,27 +232,9 @@ function RegularPerformanceAdminPage() {
                 data = result.data;
                 error = result.error;
 
-                if (error) throw error;
-
-                // Update participants
-                const { error: participantsError } = await supabase
-                    .from('performance_participants')
-                    .delete()
-                    .eq('performance_id', editedPerformance.id);
-
-                if (participantsError) throw participantsError;
-
-                if (editedPerformance.participants.length > 0) {
-                    const { error: insertError } = await supabase
-                        .from('performance_participants')
-                        .insert(
-                            editedPerformance.participants.map(userId => ({
-                                performance_id: editedPerformance.id,
-                                user_id: userId,
-                            }))
-                        );
-
-                    if (insertError) throw insertError;
+                if (error) {
+                    console.error('Error in performance update:', error)
+                    throw error
                 }
             } else {
                 // Create new performance
@@ -245,20 +251,9 @@ function RegularPerformanceAdminPage() {
                 data = result.data;
                 error = result.error;
 
-                if (error) throw error;
-
-                // Add participants
-                if (editedPerformance.participants.length > 0) {
-                    const { error: insertError } = await supabase
-                        .from('performance_participants')
-                        .insert(
-                            editedPerformance.participants.map(userId => ({
-                                performance_id: data.id,
-                                user_id: userId,
-                            }))
-                        );
-
-                    if (insertError) throw insertError;
+                if (error) {
+                    console.error('Error in performance creation:', error)
+                    throw error
                 }
             }
 
@@ -266,7 +261,8 @@ function RegularPerformanceAdminPage() {
             setIsEditing(false)
             setEditedPerformance(null)
         } catch (error) {
-            console.error('Error updating performance:', error.message)
+            console.error('Error caught in handleSave:', error.message)
+            console.error('Error stack:', error.stack)
             setError(error.message)
         }
     }
@@ -401,9 +397,13 @@ function RegularPerformanceAdminPage() {
                                 {performance.description && (
                                     <Text className={styles.description}>{performance.description}</Text>
                                 )}
-                                {performance.participants?.length > 0 && (
+                                {performance.performance_videos?.length > 0 && (
                                     <Text className={styles.channelInfo}>
-                                        Participants: {performance.participants.map(p => p.nickname || 'Anonymous').join(', ')}
+                                        Participants: {performance.performance_videos
+                                            .flatMap(video => video.performance_video_roles || [])
+                                            .map(role => role.user_profiles?.nickname || 'Anonymous')
+                                            .filter((name, index, self) => self.indexOf(name) === index)
+                                            .join(', ')}
                                     </Text>
                                 )}
                             </div>
