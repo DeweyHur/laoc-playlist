@@ -48,19 +48,21 @@ function AuthCallback() {
           // Create new user profile
           const { error: insertError } = await supabase
             .from('user_profiles')
-            .insert([
+            .upsert([
               {
                 id: session.user.id,
                 nickname: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Anonymous'
               }
-            ])
+            ], {
+              onConflict: 'id'
+            })
 
           if (insertError) {
             console.error('AuthCallback: Error creating profile:', insertError)
             throw insertError
           }
 
-          console.log('AuthCallback: Profile created successfully')
+          console.log('AuthCallback: Profile created/updated successfully')
         }
 
         navigate('/', { replace: true })
